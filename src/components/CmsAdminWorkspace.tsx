@@ -6,11 +6,13 @@ import {
   Building2,
   Calendar,
   Check,
+  Cloud,
   Compass,
   Copy,
   Database,
   Eye,
   EyeOff,
+  Image as ImageIcon,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -21,6 +23,7 @@ import {
   Settings,
   ShieldAlert,
   Trash2,
+  Upload,
   Users,
 } from 'lucide-react';
 import {
@@ -55,13 +58,20 @@ import {
   updateMeetingRfpStatus,
 } from '../lib/cmsService';
 import { signInWithGoogle, signOutAdmin } from '../lib/firebase';
+import {
+  MediaAssetRecord,
+  subscribeMediaAssets,
+} from '../lib/mediaService';
 import { CmsAdminGuideDrawer } from './CmsAdminGuideDrawer';
 import {
   EventEditorModal,
   ExperienceEditorModal,
   HotelEditorModal,
+  MediaPickerRequest,
   NeighborhoodEditorModal,
 } from './CmsEditors';
+import { MediaLibraryTab } from './MediaLibraryTab';
+import { MediaManagerModal, MediaUsageRef } from './MediaManagerModal';
 import { ResilientImage } from './ResilientImage';
 import { ResolvedAdminRole } from '../lib/cmsService';
 
@@ -72,6 +82,7 @@ type AdminTab =
   | 'neighborhoods'
   | 'events'
   | 'hotels'
+  | 'media'
   | 'leads'
   | 'admins';
 
@@ -101,6 +112,7 @@ export function CmsAdminWorkspace({
   const [guideLeads, setGuideLeads] = useState<GuideLeadRecord[]>([]);
   const [meetingRfps, setMeetingRfps] = useState<MeetingRfpRecord[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
+  const [mediaAssets, setMediaAssets] = useState<MediaAssetRecord[]>([]);
 
   const [siteDraft, setSiteDraft] = useState<SiteConfigData>(DEFAULT_SITE_CONFIG);
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,6 +122,12 @@ export function CmsAdminWorkspace({
   const [authError, setAuthError] = useState('');
   const [uidCopied, setUidCopied] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [mediaModalReq, setMediaModalReq] = useState<MediaPickerRequest | null>(
+    null
+  );
+  const [mediaStandaloneTab, setMediaStandaloneTab] = useState<
+    'upload' | 'drive' | null
+  >(null);
 
   // Add Admin form state (Super Admin only)
   const [newAdminUid, setNewAdminUid] = useState('');
@@ -121,6 +139,8 @@ export function CmsAdminWorkspace({
   const isSuperAdmin =
     Boolean(user?.emailVerified) &&
     user?.email?.toLowerCase() === BOOTSTRAPPED_ADMIN_EMAIL;
+  const canDeleteMedia =
+    isSuperAdmin || adminRole === 'superAdmin' || adminRole === 'admin';
 
   // Modal editors
   const [editingExp, setEditingExp] = useState<CmsExperience | null | undefined>(
@@ -138,13 +158,13 @@ export function CmsAdminWorkspace({
 
   const showNotice = (msg: string) => {
     setToast(msg);
-    window.setTimeout(() => setToast(''), 3000);
+    window.setTimeout(() => setToast(''), 3500);
   };
 
   // Subscribe to all Firestore collections strictly after verified admin auth
   useEffect(() => {
     if (!authReady || !user || !isAdmin) return;
-    const unsub = subscribeAdminCms({
+    const unsubCms = subscribeAdminCms({
       onSiteConfig: (cfg) => {
         setSiteConfig(cfg);
         if (cfg) setSiteDraft(cfg);
@@ -156,8 +176,42 @@ export function CmsAdminWorkspace({
       onGuideLeads: setGuideLeads,
       onMeetingRfps: setMeetingRfps,
     });
-    return unsub;
+    const unsubMedia = subscribeMediaAssets(setMediaAssets);
+    return () => {
+      unsubCms();
+      unsubMedia();
+    };
   }, [authReady, user, isAdmin]);
+
+  // Helper to scan where any image URL is currently used across the CMS
+  const getMediaUsageRefs = (url: string): MediaUsageRef[] => {
+    if (!url) return [];
+    const refs: MediaUsageRef[] = [];
+    if (siteConfig?.heroImage === url || siteDraft.heroImage === url) {
+      refs.push({ section: 'Trang chủ', label: 'Ảnh nền Banner Hero' });
+    }
+    for (const exp of experiences) {
+      if (exp.image === url) {
+        refs.push({ section: 'Trải nghiệm', label: exp.title.vi });
+      }
+    }
+    for (const nb of neighborhoods) {
+      if (nb.image === url) {
+        refs.push({ section: 'Khu phố', label: nb.name });
+      }
+    }
+    for (const evt of events) {
+      if (evt.image === url) {
+        refs.push({ section: 'Sự kiện', label: evt.title.vi });
+      }
+    }
+    for (const htl of hotels) {
+      if (htl.image === url) {
+        refs.push({ section: 'Khách sạn', label: htl.name });
+      }
+    }
+    return refs;
+  };
 
   // Subscribe to /admins list only when logged in as Super Admin
   useEffect(() => {
@@ -453,6 +507,12 @@ export function CmsAdminWorkspace({
     },
     { id: 'events', label: 'Sự kiện', icon: Calendar, count: events.length },
     { id: 'hotels', label: 'Khách sạn', icon: Building2, count: hotels.length },
+    {
+      id: 'media',
+      label: 'Thư viện Media',
+      icon: ImageIcon,
+      count: mediaAssets.length,
+    },
     {
       id: 'leads',
       label: 'Khách hàng & RFP',
@@ -937,10 +997,50 @@ export function CmsAdminWorkspace({
               </div>
 
               {/* Hero Image Picker */}
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold text-[#0F1B2B]">
-                  Ảnh nền toàn cảnh Hero
-                </label>
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="block text-xs font-semibold text-[#0F1B2B]">
+                    Ảnh nền toàn cảnh Hero
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMediaModalReq({
+                          folder: 'hero',
+                          contextTitle:
+                            siteDraft.headlineVi || 'Meet Boston Hero Banner',
+                          contextHint: 'boston-skyline',
+                          initialTab: 'upload',
+                          onSelected: (url) =>
+                            setSiteDraft((prev) => ({ ...prev, heroImage: url })),
+                        })
+                      }
+                      className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md bg-[#0A2239] px-3 text-xs font-semibold text-white hover:bg-[#133454]"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>Tải ảnh / Tối ưu WebP</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMediaModalReq({
+                          folder: 'hero',
+                          contextTitle:
+                            siteDraft.headlineVi || 'Meet Boston Hero Banner',
+                          contextHint: 'boston-skyline',
+                          initialTab: 'drive',
+                          onSelected: (url) =>
+                            setSiteDraft((prev) => ({ ...prev, heroImage: url })),
+                        })
+                      }
+                      className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md border border-[#0A2239]/25 bg-[#F7F8FA] px-3 text-xs font-semibold text-[#0A2239] hover:bg-white"
+                    >
+                      <Cloud className="h-3.5 w-3.5" />
+                      <span>Google Drive / Thư viện</span>
+                    </button>
+                  </div>
+                </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="h-16 w-28 shrink-0 overflow-hidden rounded-lg border border-[#E3E7EE] bg-[#0A2239]">
                     <ResilientImage
@@ -1917,6 +2017,17 @@ export function CmsAdminWorkspace({
               </div>
             </div>
           )}
+
+          {/* TAB 9: MEDIA LIBRARY */}
+          {activeTab === 'media' && (
+            <MediaLibraryTab
+              assets={mediaAssets}
+              canDelete={canDeleteMedia}
+              getUsageRefs={getMediaUsageRefs}
+              onOpenUploader={(tab) => setMediaStandaloneTab(tab)}
+              onNotice={showNotice}
+            />
+          )}
         </main>
       </div>
 
@@ -1926,6 +2037,7 @@ export function CmsAdminWorkspace({
           initial={editingExp}
           nextOrder={experiences.length + 1}
           saving={busy}
+          onOpenMediaPicker={setMediaModalReq}
           onClose={() => setEditingExp(undefined)}
           onSave={async (draft) => {
             setBusy(true);
@@ -1945,6 +2057,7 @@ export function CmsAdminWorkspace({
           initial={editingNb}
           nextOrder={neighborhoods.length + 1}
           saving={busy}
+          onOpenMediaPicker={setMediaModalReq}
           onClose={() => setEditingNb(undefined)}
           onSave={async (draft) => {
             setBusy(true);
@@ -1964,6 +2077,7 @@ export function CmsAdminWorkspace({
           initial={editingEvt}
           nextOrder={events.length + 1}
           saving={busy}
+          onOpenMediaPicker={setMediaModalReq}
           onClose={() => setEditingEvt(undefined)}
           onSave={async (draft) => {
             setBusy(true);
@@ -1983,6 +2097,7 @@ export function CmsAdminWorkspace({
           initial={editingHtl}
           nextOrder={hotels.length + 1}
           saving={busy}
+          onOpenMediaPicker={setMediaModalReq}
           onClose={() => setEditingHtl(undefined)}
           onSave={async (draft) => {
             setBusy(true);
@@ -1996,6 +2111,31 @@ export function CmsAdminWorkspace({
           }}
         />
       )}
+
+      {/* Unified Media Upload, Google Drive & Library Modal */}
+      <MediaManagerModal
+        open={Boolean(mediaModalReq) || Boolean(mediaStandaloneTab)}
+        uid={user.uid}
+        canDelete={canDeleteMedia}
+        assets={mediaAssets}
+        defaultFolder={mediaModalReq?.folder || 'general'}
+        contextTitle={mediaModalReq?.contextTitle || ''}
+        contextHint={mediaModalReq?.contextHint || ''}
+        initialTab={
+          mediaModalReq?.initialTab || mediaStandaloneTab || 'upload'
+        }
+        selectMode={Boolean(mediaModalReq)}
+        getUsageRefs={getMediaUsageRefs}
+        onClose={() => {
+          setMediaModalReq(null);
+          setMediaStandaloneTab(null);
+        }}
+        onSelectAsset={(asset) => {
+          mediaModalReq?.onSelected(asset.url);
+        }}
+        onNotice={showNotice}
+      />
+
       {/* Interactive Right-docked Admin CMS Guide Drawer */}
       <CmsAdminGuideDrawer
         open={guideOpen}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Cloud, Plus, Trash2, Upload, X } from 'lucide-react';
 import { ExperienceCategory, IMAGES } from '../data/bostonData';
 import {
   CmsEvent,
@@ -8,20 +8,75 @@ import {
   CmsNeighborhood,
   PRESET_GALLERY_IMAGES,
 } from '../lib/cmsService';
+import { MediaFolder } from '../lib/mediaService';
 import { ResilientImage } from './ResilientImage';
+
+export interface MediaPickerRequest {
+  folder: MediaFolder;
+  contextTitle: string;
+  contextHint: string;
+  initialTab?: 'upload' | 'drive' | 'library';
+  onSelected: (url: string) => void;
+}
 
 function ImagePickerField({
   value,
   onChange,
+  onOpenMediaPicker,
+  folder,
+  contextTitle,
+  contextHint,
 }: {
   value: string;
   onChange: (val: string) => void;
+  onOpenMediaPicker?: (req: MediaPickerRequest) => void;
+  folder: MediaFolder;
+  contextTitle: string;
+  contextHint: string;
 }) {
   return (
     <div className="space-y-2.5">
-      <label className="block text-xs font-semibold text-[#0F1B2B]">
-        Ảnh đại diện (URL hoặc chọn từ thư viện có sẵn)
-      </label>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label className="block text-xs font-semibold text-[#0F1B2B]">
+          Ảnh đại diện (Tải lên, Google Drive, Thư viện hoặc URL)
+        </label>
+        {onOpenMediaPicker && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                onOpenMediaPicker({
+                  folder,
+                  contextTitle,
+                  contextHint,
+                  initialTab: 'upload',
+                  onSelected: onChange,
+                })
+              }
+              className="inline-flex min-h-[30px] items-center gap-1.5 rounded-md bg-[#0A2239] px-2.5 text-[11px] font-semibold text-white hover:bg-[#133454]"
+            >
+              <Upload className="h-3 w-3" />
+              <span>Tải ảnh / Tối ưu WebP</span>
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onOpenMediaPicker({
+                  folder,
+                  contextTitle,
+                  contextHint,
+                  initialTab: 'drive',
+                  onSelected: onChange,
+                })
+              }
+              className="inline-flex min-h-[30px] items-center gap-1.5 rounded-md border border-[#0A2239]/25 bg-[#F7F8FA] px-2.5 text-[11px] font-semibold text-[#0A2239] hover:bg-white"
+            >
+              <Cloud className="h-3 w-3" />
+              <span>Google Drive / Thư viện</span>
+            </button>
+          </div>
+        )}
+      </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-[#E3E7EE] bg-[#0A2239]">
           <ResilientImage
@@ -68,12 +123,14 @@ export function ExperienceEditorModal({
   saving,
   onClose,
   onSave,
+  onOpenMediaPicker,
 }: {
   initial: CmsExperience | null;
   nextOrder: number;
   saving: boolean;
   onClose: () => void;
   onSave: (draft: Omit<CmsExperience, 'id'>) => Promise<void>;
+  onOpenMediaPicker?: (req: MediaPickerRequest) => void;
 }) {
   const [titleVi, setTitleVi] = useState(initial?.title.vi || '');
   const [titleEn, setTitleEn] = useState(initial?.title.en || '');
@@ -409,7 +466,14 @@ export function ExperienceEditorModal({
             </div>
           </div>
 
-          <ImagePickerField value={image} onChange={setImage} />
+          <ImagePickerField
+            value={image}
+            onChange={setImage}
+            onOpenMediaPicker={onOpenMediaPicker}
+            folder="experiences"
+            contextTitle={titleVi || titleEn}
+            contextHint={district}
+          />
 
           {error && (
             <p role="alert" className="text-xs font-semibold text-[#C8102E]">
@@ -448,12 +512,14 @@ export function NeighborhoodEditorModal({
   saving,
   onClose,
   onSave,
+  onOpenMediaPicker,
 }: {
   initial: CmsNeighborhood | null;
   nextOrder: number;
   saving: boolean;
   onClose: () => void;
   onSave: (draft: Omit<CmsNeighborhood, 'id'>) => Promise<void>;
+  onOpenMediaPicker?: (req: MediaPickerRequest) => void;
 }) {
   const [name, setName] = useState(initial?.name || '');
   const [published, setPublished] = useState(initial ? initial.published : true);
@@ -747,7 +813,14 @@ export function NeighborhoodEditorModal({
             ))}
           </div>
 
-          <ImagePickerField value={image} onChange={setImage} />
+          <ImagePickerField
+            value={image}
+            onChange={setImage}
+            onOpenMediaPicker={onOpenMediaPicker}
+            folder="neighborhoods"
+            contextTitle={name}
+            contextHint="boston-neighborhood"
+          />
 
           <label className="flex items-center gap-2 text-xs font-semibold text-[#0F1B2B]">
             <input
@@ -796,12 +869,14 @@ export function EventEditorModal({
   saving,
   onClose,
   onSave,
+  onOpenMediaPicker,
 }: {
   initial: CmsEvent | null;
   nextOrder: number;
   saving: boolean;
   onClose: () => void;
   onSave: (draft: Omit<CmsEvent, 'id'>) => Promise<void>;
+  onOpenMediaPicker?: (req: MediaPickerRequest) => void;
 }) {
   const [titleVi, setTitleVi] = useState(initial?.title.vi || '');
   const [titleEn, setTitleEn] = useState(initial?.title.en || '');
@@ -1117,7 +1192,14 @@ export function EventEditorModal({
             </div>
           </div>
 
-          <ImagePickerField value={image} onChange={setImage} />
+          <ImagePickerField
+            value={image}
+            onChange={setImage}
+            onOpenMediaPicker={onOpenMediaPicker}
+            folder="events"
+            contextTitle={titleVi || titleEn}
+            contextHint={district}
+          />
 
           <label className="flex items-center gap-2 text-xs font-semibold text-[#0F1B2B]">
             <input
@@ -1166,12 +1248,14 @@ export function HotelEditorModal({
   saving,
   onClose,
   onSave,
+  onOpenMediaPicker,
 }: {
   initial: CmsHotel | null;
   nextOrder: number;
   saving: boolean;
   onClose: () => void;
   onSave: (draft: Omit<CmsHotel, 'id'>) => Promise<void>;
+  onOpenMediaPicker?: (req: MediaPickerRequest) => void;
 }) {
   const [name, setName] = useState(initial?.name || '');
   const [district, setDistrict] = useState(initial?.district || 'Back Bay');
@@ -1458,7 +1542,14 @@ export function HotelEditorModal({
             </div>
           </div>
 
-          <ImagePickerField value={image} onChange={setImage} />
+          <ImagePickerField
+            value={image}
+            onChange={setImage}
+            onOpenMediaPicker={onOpenMediaPicker}
+            folder="hotels"
+            contextTitle={name}
+            contextHint={district}
+          />
 
           <label className="flex items-center gap-2 text-xs font-semibold text-[#0F1B2B]">
             <input

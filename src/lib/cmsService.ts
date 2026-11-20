@@ -353,7 +353,7 @@ function toExperiencePayload(
     priceEn: clampStr(item.price.en, 120, 'Free'),
     address: clampStr(item.address, 220, 'Boston, MA'),
     transit: clampStr(item.transit, 160, 'MBTA Green Line'),
-    image: clampStr(item.image, 500, IMAGES.freedomTrail),
+    image: clampStr(item.image, 350000, IMAGES.freedomTrail),
     updatedAt: serverTimestamp(),
   };
 
@@ -398,7 +398,7 @@ function toNeighborhoodPayload(
     vibeVi: clampStr(item.vibe.vi, 120, 'Kiến trúc · Bản địa'),
     vibeEn: clampStr(item.vibe.en, 120, 'Architecture · Local'),
     walkScore: Math.max(0, Math.min(100, Math.round(Number(item.walkScore) || 90))),
-    image: clampStr(item.image, 500, IMAGES.beaconHill),
+    image: clampStr(item.image, 350000, IMAGES.beaconHill),
     topPicks: safePicks,
     updatedAt: serverTimestamp(),
   };
@@ -432,7 +432,7 @@ function toEventPayload(
     priceEn: clampStr(item.price.en, 100, 'Free'),
     descriptionVi: clampStr(item.description.vi, 1500, 'Chi tiết sự kiện.'),
     descriptionEn: clampStr(item.description.en, 1500, 'Event details.'),
-    image: clampStr(item.image, 500, IMAGES.seaport),
+    image: clampStr(item.image, 350000, IMAGES.seaport),
     updatedAt: serverTimestamp(),
   };
 
@@ -470,7 +470,7 @@ function toHotelPayload(
     address: clampStr(item.address, 220, 'Boston, MA'),
     amenitiesVi,
     amenitiesEn,
-    image: clampStr(item.image, 500, IMAGES.luxuryHotel),
+    image: clampStr(item.image, 350000, IMAGES.luxuryHotel),
     updatedAt: serverTimestamp(),
   };
 
@@ -769,7 +769,7 @@ export async function saveSiteConfig(config: SiteConfigData, uid: string) {
     headlineEn: clampStr(config.headlineEn, 180, DEFAULT_SITE_CONFIG.headlineEn),
     subheadVi: clampStr(config.subheadVi, 500, DEFAULT_SITE_CONFIG.subheadVi),
     subheadEn: clampStr(config.subheadEn, 500, DEFAULT_SITE_CONFIG.subheadEn),
-    heroImage: clampStr(config.heroImage, 500, IMAGES.heroSkyline),
+    heroImage: clampStr(config.heroImage, 350000, IMAGES.heroSkyline),
     visitorCenterAddress: clampStr(
       config.visitorCenterAddress,
       220,

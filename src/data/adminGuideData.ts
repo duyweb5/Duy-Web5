@@ -7,6 +7,7 @@ export type GuideModuleTabId =
   | 'neighborhoods'
   | 'events'
   | 'hotels'
+  | 'media'
   | 'leads'
   | 'admins';
 
@@ -210,6 +211,13 @@ export const ROLE_MATRIX_ROWS: RoleMatrixRow[] = [
     member: 'Không',
   },
   {
+    capability: 'Thư viện Media (Tải ảnh, nén WebP, nhập Google Drive)',
+    superAdmin: 'Toàn quyền + Xóa',
+    admin: 'Toàn quyền + Xóa',
+    editor: 'Tải lên & Sửa SEO',
+    member: 'Không',
+  },
+  {
     capability: 'Thêm / thu hồi tài khoản Admin & Editor',
     superAdmin: 'Duy nhất',
     admin: 'Không',
@@ -339,6 +347,27 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     tips: [
       'Giá phòng phải là số nguyên dương (từ 10 đến 25.000 USD) để đảm bảo hiển thị định dạng tiền tệ chuẩn.',
       'Sắp xếp các khách sạn đối tác chiến lược ở Thứ tự 1–4 để xuất hiện ngay hàng đầu.',
+    ],
+  },
+  {
+    id: 'topic-media',
+    tabId: 'media',
+    category: 'module',
+    title: 'Thư viện Media, Upload Máy tính / Google Drive & Nén WebP chuẩn SEO',
+    subtitle: 'Tối ưu dung lượng ảnh, cắt khung 16:9 / 4:3, đặt tên chuẩn SEO và xóa an toàn',
+    roles: ['superAdmin', 'admin', 'editor'],
+    purpose:
+      'Quản lý tập trung mọi hình ảnh tải lên cho Trang chủ Hero, Trải nghiệm, Khu phố, Sự kiện và Khách sạn — tự động thu nhỏ, chuyển sang định dạng WebP siêu nhẹ và gợi ý tên file chuẩn SEO.',
+    steps: [
+      'Mở tab "Thư viện Media" hoặc bấm nút "Tải ảnh / Tối ưu WebP" / "Google Drive / Thư viện" ngay trong khung sửa ảnh của bất kỳ mục nào.',
+      'Chọn nguồn ảnh: kéo-thả / chọn tệp / dán ảnh (Ctrl+V) từ Máy tính, hoặc chọn tab "Google Drive" → kết nối Google Drive (chỉ đọc) để nhập ảnh trực tiếp.',
+      'Tại màn hình Tối ưu ảnh: chọn kích thước (Hero 1920px, Card 1200px, Nhỏ 640px), cắt khung tỷ lệ (16:9, 4:3, 1:1 hoặc Tự do), định dạng WebP và kéo thanh chất lượng để xem ngay dung lượng trước/sau.',
+      'Kiểm tra Tên file chuẩn SEO tự động gợi ý (có thể bấm "Gợi ý lại tên SEO" hoặc sửa tay) và điền Alt Text song ngữ Việt – Anh → bấm "Lưu & Dùng ảnh này".',
+      'Khi muốn xóa ảnh thừa (chỉ Super Admin & Admin): bấm biểu tượng Thùng rác — hệ thống sẽ tự quét và cảnh báo đích danh nếu ảnh đang được dùng ở bài viết hoặc Banner Hero nào.',
+    ],
+    tips: [
+      'Ưu tiên giữ định dạng WebP ở chất lượng 80–84% giúp giảm 70–95% dung lượng so với ảnh gốc mà mắt thường không thấy giảm nét.',
+      'Ảnh nhập từ Google Drive được tải bản sạch về nén WebP và lưu độc lập trên kho Media của web, nên không bao giờ bị lỗi chết link hoặc chặn quyền xem từ Drive.',
     ],
   },
   {

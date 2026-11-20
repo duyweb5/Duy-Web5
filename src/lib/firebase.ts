@@ -2,19 +2,46 @@ import { initializeApp } from 'firebase/app';
 import {
   GoogleAuthProvider,
   getAuth,
+  onAuthStateChanged,
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
 import { doc, getDocFromServer, getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from '@/firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
+
+// Google Workspace OAuth scopes (least-privilege read-only Drive access)
+export const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+export const googleDriveProvider = new GoogleAuthProvider();
+SCOPES.forEach((scope) => googleDriveProvider.addScope(scope));
+googleDriveProvider.setCustomParameters({ prompt: 'select_account' });
+
+// Strict in-memory caching for Google Drive OAuth access token (never localStorage/sessionStorage)
+let cachedDriveAccessToken: string | null = null;
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    cachedDriveAccessToken = null;
+  }
+});
+
+export function getGoogleDriveAccessToken(): string | null {
+  return cachedDriveAccessToken;
+}
+
+export function clearGoogleDriveAccessToken(): void {
+  cachedDriveAccessToken = null;
+}
 
 export enum OperationType {
   CREATE = 'create',
@@ -69,10 +96,26 @@ export function handleFirestoreError(
 }
 
 export async function signInWithGoogle() {
-  return signInWithPopup(auth, googleProvider);
+  const result = await signInWithPopup(auth, googleProvider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (credential?.accessToken) {
+    // Only cache if Drive scope was already granted in the same session
+  }
+  return result;
+}
+
+export async function connectGoogleDrive(): Promise<string> {
+  const result = await signInWithPopup(auth, googleDriveProvider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (!credential?.accessToken) {
+    throw new Error('Không nhận được mã truy cập Google Drive từ tài khoản Google.');
+  }
+  cachedDriveAccessToken = credential.accessToken;
+  return cachedDriveAccessToken;
 }
 
 export async function signOutAdmin() {
+  cachedDriveAccessToken = null;
   return signOut(auth);
 }
 

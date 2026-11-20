@@ -43,6 +43,14 @@ service cloud.firestore {
       return isBootstrappedAdmin() || isListedAdminByUid() || isListedAdminByEmail();
     }
 
+    function isFullAdmin() {
+      return isBootstrappedAdmin() ||
+        (isListedAdminByUid() &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin') ||
+        (isListedAdminByEmail() &&
+          get(/databases/$(database)/documents/admins/$(emailToAdminId(request.auth.token.email))).data.role == 'admin');
+    }
+
     function incoming() {
       return request.resource.data;
     }
@@ -109,7 +117,7 @@ service cloud.firestore {
         isStr(data.headlineEn, 2, 180) &&
         isStr(data.subheadVi, 2, 500) &&
         isStr(data.subheadEn, 2, 500) &&
-        isStr(data.heroImage, 1, 500) &&
+        isStr(data.heroImage, 1, 350000) &&
         isStr(data.visitorCenterAddress, 2, 220) &&
         isStr(data.visitorCenterHours, 2, 120) &&
         isStr(data.footerAboutVi, 2, 450) &&
@@ -167,7 +175,7 @@ service cloud.firestore {
         isStr(data.priceEn, 1, 120) &&
         isStr(data.address, 2, 220) &&
         isStr(data.transit, 2, 160) &&
-        isStr(data.image, 1, 500) &&
+        isStr(data.image, 1, 350000) &&
         isStr(data.createdBy, 1, 128) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
@@ -197,7 +205,7 @@ service cloud.firestore {
         isStr(data.vibeVi, 2, 120) &&
         isStr(data.vibeEn, 2, 120) &&
         data.walkScore is number && data.walkScore >= 0 && data.walkScore <= 100 &&
-        isStr(data.image, 1, 500) &&
+        isStr(data.image, 1, 350000) &&
         data.topPicks is list &&
         data.topPicks.size() >= 1 &&
         data.topPicks.size() <= 5 &&
@@ -244,7 +252,7 @@ service cloud.firestore {
         isStr(data.priceEn, 1, 100) &&
         isStr(data.descriptionVi, 2, 1500) &&
         isStr(data.descriptionEn, 2, 1500) &&
-        isStr(data.image, 1, 500) &&
+        isStr(data.image, 1, 350000) &&
         isStr(data.createdBy, 1, 128) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
@@ -283,7 +291,7 @@ service cloud.firestore {
         isStr(data.amenitiesVi[0], 1, 100) &&
         data.amenitiesEn is list && data.amenitiesEn.size() >= 1 && data.amenitiesEn.size() <= 10 &&
         isStr(data.amenitiesEn[0], 1, 100) &&
-        isStr(data.image, 1, 500) &&
+        isStr(data.image, 1, 350000) &&
         isStr(data.createdBy, 1, 128) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
@@ -325,6 +333,36 @@ service cloud.firestore {
         data.role in ['admin', 'editor'] &&
         isStr(data.addedBy, 1, 128) &&
         data.createdAt is timestamp;
+    }
+
+    function isValidMediaAsset(data) {
+      return data.keys().hasAll([
+          'seoFileName', 'altVi', 'altEn', 'url', 'storagePath', 'storageProvider',
+          'mimeType', 'width', 'height', 'originalBytes', 'optimizedBytes',
+          'source', 'folder', 'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'seoFileName', 'altVi', 'altEn', 'url', 'storagePath', 'storageProvider',
+          'mimeType', 'width', 'height', 'originalBytes', 'optimizedBytes',
+          'source', 'folder', 'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.seoFileName, 3, 180) &&
+        data.seoFileName.matches('^[a-z0-9\\-]+\\.(webp|jpg|jpeg|png)$') &&
+        isStr(data.altVi, 1, 240) &&
+        isStr(data.altEn, 1, 240) &&
+        isStr(data.url, 1, 350000) &&
+        isStr(data.storagePath, 0, 300) &&
+        data.storageProvider in ['firebase_storage', 'firestore_compact'] &&
+        data.mimeType in ['image/webp', 'image/jpeg', 'image/png'] &&
+        data.width is number && data.width >= 1 && data.width <= 8000 &&
+        data.height is number && data.height >= 1 && data.height <= 8000 &&
+        data.originalBytes is number && data.originalBytes >= 1 && data.originalBytes <= 50000000 &&
+        data.optimizedBytes is number && data.optimizedBytes >= 1 && data.optimizedBytes <= 1000000 &&
+        data.source in ['computer', 'google_drive'] &&
+        data.folder in ['hero', 'experiences', 'neighborhoods', 'events', 'hotels', 'general'] &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
     }
 
     // -------------------------------------------------------------------------
@@ -528,6 +566,39 @@ service cloud.firestore {
         incoming().createdAt == existing().createdAt &&
         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'email']);
       allow delete: if isBootstrappedAdmin() && isValidId(userId) && userId != request.auth.uid;
+    }
+
+    // 9. Media Library Assets (Admins & Editors upload/edit SEO; only Super Admin & Admin delete)
+    match /mediaAssets/{assetId} {
+      allow get: if isVerifiedUser() && isValidId(assetId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(assetId) &&
+        isValidMediaAsset(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(assetId) &&
+        isValidMediaAsset(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().url == existing().url &&
+        incoming().storagePath == existing().storagePath &&
+        incoming().storageProvider == existing().storageProvider &&
+        incoming().mimeType == existing().mimeType &&
+        incoming().width == existing().width &&
+        incoming().height == existing().height &&
+        incoming().originalBytes == existing().originalBytes &&
+        incoming().optimizedBytes == existing().optimizedBytes &&
+        incoming().source == existing().source &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'seoFileName', 'altVi', 'altEn', 'folder', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(assetId) && isFullAdmin();
     }
 
     // Connection test probe path for startup check

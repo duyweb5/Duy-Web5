@@ -11,7 +11,7 @@
         "headlineEn": { "type": "string", "minLength": 2, "maxLength": 180 },
         "subheadVi": { "type": "string", "minLength": 2, "maxLength": 500 },
         "subheadEn": { "type": "string", "minLength": 2, "maxLength": 500 },
-        "heroImage": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "heroImage": { "type": "string", "minLength": 1, "maxLength": 350000 },
         "visitorCenterAddress": { "type": "string", "minLength": 2, "maxLength": 220 },
         "visitorCenterHours": { "type": "string", "minLength": 2, "maxLength": 120 },
         "footerAboutVi": { "type": "string", "minLength": 2, "maxLength": 450 },
@@ -72,7 +72,7 @@
         "priceEn": { "type": "string", "minLength": 1, "maxLength": 120 },
         "address": { "type": "string", "minLength": 2, "maxLength": 220 },
         "transit": { "type": "string", "minLength": 2, "maxLength": 160 },
-        "image": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "image": { "type": "string", "minLength": 1, "maxLength": 350000 },
         "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
@@ -120,7 +120,7 @@
         "vibeVi": { "type": "string", "minLength": 2, "maxLength": 120 },
         "vibeEn": { "type": "string", "minLength": 2, "maxLength": 120 },
         "walkScore": { "type": "number" },
-        "image": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "image": { "type": "string", "minLength": 1, "maxLength": 350000 },
         "topPicks": { "type": "array", "description": "Up to 5 local picks" },
         "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -168,7 +168,7 @@
         "priceEn": { "type": "string", "minLength": 1, "maxLength": 100 },
         "descriptionVi": { "type": "string", "minLength": 2, "maxLength": 1500 },
         "descriptionEn": { "type": "string", "minLength": 2, "maxLength": 1500 },
-        "image": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "image": { "type": "string", "minLength": 1, "maxLength": 350000 },
         "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
@@ -219,7 +219,7 @@
         "address": { "type": "string", "minLength": 2, "maxLength": 220 },
         "amenitiesVi": { "type": "array", "description": "Up to 10 amenities in Vietnamese" },
         "amenitiesEn": { "type": "array", "description": "Up to 10 amenities in English" },
-        "image": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "image": { "type": "string", "minLength": 1, "maxLength": 350000 },
         "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
@@ -289,6 +289,47 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "displayName", "role", "addedBy", "createdAt"]
+    },
+    "MediaAsset": {
+      "title": "MediaAsset",
+      "description": "Optimized CMS image asset stored in Firebase Storage (or compact WebP fallback) with SEO filename and bilingual alt text.",
+      "type": "object",
+      "properties": {
+        "seoFileName": { "type": "string", "minLength": 3, "maxLength": 180, "pattern": "^[a-z0-9\\-]+\\.(webp|jpg|jpeg|png)$" },
+        "altVi": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "altEn": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "url": { "type": "string", "minLength": 1, "maxLength": 350000 },
+        "storagePath": { "type": "string", "minLength": 0, "maxLength": 300 },
+        "storageProvider": { "type": "string", "enum": ["firebase_storage", "firestore_compact"] },
+        "mimeType": { "type": "string", "enum": ["image/webp", "image/jpeg", "image/png"] },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "originalBytes": { "type": "number" },
+        "optimizedBytes": { "type": "number" },
+        "source": { "type": "string", "enum": ["computer", "google_drive"] },
+        "folder": { "type": "string", "enum": ["hero", "experiences", "neighborhoods", "events", "hotels", "general"] },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "seoFileName",
+        "altVi",
+        "altEn",
+        "url",
+        "storagePath",
+        "storageProvider",
+        "mimeType",
+        "width",
+        "height",
+        "originalBytes",
+        "optimizedBytes",
+        "source",
+        "folder",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -322,7 +363,11 @@
     },
     "/admins/{userId}": {
       "schema": { "$ref": "#/entities/AdminUser" },
-      "description": "CMS administrator RBAC records keyed by Firebase Auth UID."
+      "description": "CMS administrator RBAC records keyed by Firebase Auth UID or normalized email ID."
+    },
+    "/mediaAssets/{assetId}": {
+      "schema": { "$ref": "#/entities/MediaAsset" },
+      "description": "Centralized CMS Media Library assets with SEO filenames, bilingual Alt text, and optimization stats."
     }
   }
 }
