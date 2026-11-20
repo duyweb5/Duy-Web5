@@ -1,0 +1,328 @@
+{
+  "entities": {
+    "SiteConfig": {
+      "title": "SiteConfig",
+      "description": "Global CMS settings for Meet Boston homepage hero, metrics, footer, and section visibility.",
+      "type": "object",
+      "properties": {
+        "kickerVi": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "kickerEn": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "headlineVi": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "headlineEn": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "subheadVi": { "type": "string", "minLength": 2, "maxLength": 500 },
+        "subheadEn": { "type": "string", "minLength": 2, "maxLength": 500 },
+        "heroImage": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "visitorCenterAddress": { "type": "string", "minLength": 2, "maxLength": 220 },
+        "visitorCenterHours": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "footerAboutVi": { "type": "string", "minLength": 2, "maxLength": 450 },
+        "footerAboutEn": { "type": "string", "minLength": 2, "maxLength": 450 },
+        "showExplore": { "type": "boolean" },
+        "showNeighborhoods": { "type": "boolean" },
+        "showEvents": { "type": "boolean" },
+        "showStay": { "type": "boolean" },
+        "showMeetings": { "type": "boolean" },
+        "stats": { "type": "array", "description": "Up to 4 hero highlight metric items" },
+        "updatedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "kickerVi",
+        "kickerEn",
+        "headlineVi",
+        "headlineEn",
+        "subheadVi",
+        "subheadEn",
+        "heroImage",
+        "visitorCenterAddress",
+        "visitorCenterHours",
+        "footerAboutVi",
+        "footerAboutEn",
+        "showExplore",
+        "showNeighborhoods",
+        "showEvents",
+        "showStay",
+        "showMeetings",
+        "stats",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "Experience": {
+      "title": "Experience",
+      "description": "Curated Boston attraction or editorial story managed in the CMS.",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string", "enum": ["history", "dining", "arts", "outdoors"] },
+        "featured": { "type": "boolean" },
+        "published": { "type": "boolean" },
+        "sortOrder": { "type": "number" },
+        "titleVi": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "titleEn": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "summaryVi": { "type": "string", "minLength": 2, "maxLength": 420 },
+        "summaryEn": { "type": "string", "minLength": 2, "maxLength": 420 },
+        "descriptionVi": { "type": "string", "minLength": 2, "maxLength": 2000 },
+        "descriptionEn": { "type": "string", "minLength": 2, "maxLength": 2000 },
+        "insiderTipVi": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "insiderTipEn": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "district": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "durationVi": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "durationEn": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "hours": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "priceVi": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "priceEn": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "address": { "type": "string", "minLength": 2, "maxLength": 220 },
+        "transit": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "image": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "category",
+        "featured",
+        "published",
+        "sortOrder",
+        "titleVi",
+        "titleEn",
+        "summaryVi",
+        "summaryEn",
+        "descriptionVi",
+        "descriptionEn",
+        "insiderTipVi",
+        "insiderTipEn",
+        "district",
+        "durationVi",
+        "durationEn",
+        "hours",
+        "priceVi",
+        "priceEn",
+        "address",
+        "transit",
+        "image",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Neighborhood": {
+      "title": "Neighborhood",
+      "description": "Iconic Boston neighborhood profile managed in the CMS.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "published": { "type": "boolean" },
+        "sortOrder": { "type": "number" },
+        "taglineVi": { "type": "string", "minLength": 2, "maxLength": 240 },
+        "taglineEn": { "type": "string", "minLength": 2, "maxLength": 240 },
+        "descriptionVi": { "type": "string", "minLength": 2, "maxLength": 1500 },
+        "descriptionEn": { "type": "string", "minLength": 2, "maxLength": 1500 },
+        "transit": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "vibeVi": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "vibeEn": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "walkScore": { "type": "number" },
+        "image": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "topPicks": { "type": "array", "description": "Up to 5 local picks" },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "name",
+        "published",
+        "sortOrder",
+        "taglineVi",
+        "taglineEn",
+        "descriptionVi",
+        "descriptionEn",
+        "transit",
+        "vibeVi",
+        "vibeEn",
+        "walkScore",
+        "image",
+        "topPicks",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Boston calendar event managed in the CMS.",
+      "type": "object",
+      "properties": {
+        "dayNum": { "type": "string", "minLength": 1, "maxLength": 4 },
+        "monthLabelVi": { "type": "string", "minLength": 2, "maxLength": 20 },
+        "monthLabelEn": { "type": "string", "minLength": 2, "maxLength": 20 },
+        "fullDateVi": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "fullDateEn": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "timeframe": { "type": "string", "enum": ["week", "month", "holiday"] },
+        "category": { "type": "string", "enum": ["arts", "sports", "festival", "exhibition"] },
+        "published": { "type": "boolean" },
+        "sortOrder": { "type": "number" },
+        "titleVi": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "titleEn": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "venue": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "district": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "time": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "priceVi": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "priceEn": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "descriptionVi": { "type": "string", "minLength": 2, "maxLength": 1500 },
+        "descriptionEn": { "type": "string", "minLength": 2, "maxLength": 1500 },
+        "image": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "dayNum",
+        "monthLabelVi",
+        "monthLabelEn",
+        "fullDateVi",
+        "fullDateEn",
+        "timeframe",
+        "category",
+        "published",
+        "sortOrder",
+        "titleVi",
+        "titleEn",
+        "venue",
+        "district",
+        "time",
+        "priceVi",
+        "priceEn",
+        "descriptionVi",
+        "descriptionEn",
+        "image",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Hotel": {
+      "title": "Hotel",
+      "description": "Curated Boston hotel listing managed in the CMS.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "district": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "neighborhoodKey": { "type": "string", "enum": ["back-bay", "seaport", "beacon-hill"] },
+        "published": { "type": "boolean" },
+        "sortOrder": { "type": "number" },
+        "styleVi": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "styleEn": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "rateUsd": { "type": "number" },
+        "rating": { "type": "string", "minLength": 1, "maxLength": 10 },
+        "summaryVi": { "type": "string", "minLength": 2, "maxLength": 420 },
+        "summaryEn": { "type": "string", "minLength": 2, "maxLength": 420 },
+        "descriptionVi": { "type": "string", "minLength": 2, "maxLength": 1500 },
+        "descriptionEn": { "type": "string", "minLength": 2, "maxLength": 1500 },
+        "address": { "type": "string", "minLength": 2, "maxLength": 220 },
+        "amenitiesVi": { "type": "array", "description": "Up to 10 amenities in Vietnamese" },
+        "amenitiesEn": { "type": "array", "description": "Up to 10 amenities in English" },
+        "image": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "name",
+        "district",
+        "neighborhoodKey",
+        "published",
+        "sortOrder",
+        "styleVi",
+        "styleEn",
+        "rateUsd",
+        "rating",
+        "summaryVi",
+        "summaryEn",
+        "descriptionVi",
+        "descriptionEn",
+        "address",
+        "amenitiesVi",
+        "amenitiesEn",
+        "image",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GuideLead": {
+      "title": "GuideLead",
+      "description": "Visitor Guide and Newsletter email submission (PII isolated to admins).",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "minLength": 5, "maxLength": 160, "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" },
+        "source": { "type": "string", "enum": ["visitor_guide", "newsletter"] },
+        "lang": { "type": "string", "enum": ["vi", "en"] },
+        "status": { "type": "string", "enum": ["new", "contacted", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "source", "lang", "status", "createdAt", "updatedAt"]
+    },
+    "MeetingRfp": {
+      "title": "MeetingRfp",
+      "description": "Corporate Meetings & Conventions RFP inquiry (PII isolated to admins).",
+      "type": "object",
+      "properties": {
+        "organization": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "email": { "type": "string", "minLength": 5, "maxLength": 160, "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" },
+        "guests": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "timeframe": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "notes": { "type": "string", "minLength": 0, "maxLength": 1200 },
+        "status": { "type": "string", "enum": ["new", "reviewing", "responded", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["organization", "email", "guests", "timeframe", "notes", "status", "createdAt", "updatedAt"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized CMS administrator allowlist record.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "minLength": 5, "maxLength": 160, "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["admin", "editor"] },
+        "addedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "displayName", "role", "addedBy", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/siteConfig/{configId}": {
+      "schema": { "$ref": "#/entities/SiteConfig" },
+      "description": "Global homepage hero, metrics, footer, and section toggle configuration (primary doc: main)."
+    },
+    "/experiences/{experienceId}": {
+      "schema": { "$ref": "#/entities/Experience" },
+      "description": "Curated Boston experiences and attractions managed by CMS admins."
+    },
+    "/neighborhoods/{neighborhoodId}": {
+      "schema": { "$ref": "#/entities/Neighborhood" },
+      "description": "Boston neighborhood spotlight entries managed by CMS admins."
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/Event" },
+      "description": "Upcoming Boston events calendar managed by CMS admins."
+    },
+    "/hotels/{hotelId}": {
+      "schema": { "$ref": "#/entities/Hotel" },
+      "description": "Curated Boston hotels directory managed by CMS admins."
+    },
+    "/guideLeads/{leadId}": {
+      "schema": { "$ref": "#/entities/GuideLead" },
+      "description": "Visitor guide & newsletter email leads (PII restricted to admins)."
+    },
+    "/meetingRfps/{rfpId}": {
+      "schema": { "$ref": "#/entities/MeetingRfp" },
+      "description": "Corporate meeting & convention RFP inquiries (PII restricted to admins)."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "CMS administrator RBAC records keyed by Firebase Auth UID."
+    }
+  }
+}

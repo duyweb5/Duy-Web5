@@ -1,0 +1,6 @@
+{
+  "name": "Meet Boston — Cổng Thông Tin Du Lịch & Điểm Đến Chính Thức",
+  "description": "Khám phá Boston: con đường lịch sử Freedom Trail, 6 khu phố biểu tượng, ẩm thực bản địa, sự kiện văn hóa, khách sạn chọn lọc và công cụ lập lịch trình du lịch.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

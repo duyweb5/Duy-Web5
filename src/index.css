@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: "Manrope", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-charles-navy: #0A2239;
+  --color-charles-deep: #071727;
+  --color-boston-crimson: #C8102E;
+  --color-boston-crimson-dark: #A10C24;
+  --color-harbor-blue: #0066B2;
+  --color-stone-canvas: #F7F8FA;
+  --color-ink-primary: #0F1B2B;
+  --color-ink-muted: #526071;
+  --color-hairline: #E3E7EE;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-sans);
+    color: var(--color-ink-primary);
+    background-color: #ffffff;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+.text-balance-heading {
+  text-wrap: balance;
+}
+

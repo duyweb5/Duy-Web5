@@ -1,0 +1,523 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny all unmatched paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Hardened Global Helpers
+    // -------------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'duyweb5@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isStr(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidEmail(val) {
+      return isStr(val, 5, 160) && val.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$');
+    }
+
+    function isValidStatItem(item) {
+      return item is map &&
+        item.keys().hasAll(['value', 'labelVi', 'labelEn']) &&
+        item.keys().hasOnly(['value', 'labelVi', 'labelEn']) &&
+        isStr(item.value, 1, 24) &&
+        isStr(item.labelVi, 1, 120) &&
+        isStr(item.labelEn, 1, 120);
+    }
+
+    function isValidTopPick(item) {
+      return item is map &&
+        item.keys().hasAll(['name', 'categoryVi', 'categoryEn', 'noteVi', 'noteEn']) &&
+        item.keys().hasOnly(['name', 'categoryVi', 'categoryEn', 'noteVi', 'noteEn']) &&
+        isStr(item.name, 1, 120) &&
+        isStr(item.categoryVi, 1, 60) &&
+        isStr(item.categoryEn, 1, 60) &&
+        isStr(item.noteVi, 1, 260) &&
+        isStr(item.noteEn, 1, 260);
+    }
+
+    // -------------------------------------------------------------------------
+    // Entity Validation Blueprints (Anti-Update-Gap + Full Bounds)
+    // -------------------------------------------------------------------------
+    function isValidSiteConfig(data) {
+      return data.keys().hasAll([
+          'kickerVi', 'kickerEn', 'headlineVi', 'headlineEn',
+          'subheadVi', 'subheadEn', 'heroImage',
+          'visitorCenterAddress', 'visitorCenterHours',
+          'footerAboutVi', 'footerAboutEn',
+          'showExplore', 'showNeighborhoods', 'showEvents', 'showStay', 'showMeetings',
+          'stats', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'kickerVi', 'kickerEn', 'headlineVi', 'headlineEn',
+          'subheadVi', 'subheadEn', 'heroImage',
+          'visitorCenterAddress', 'visitorCenterHours',
+          'footerAboutVi', 'footerAboutEn',
+          'showExplore', 'showNeighborhoods', 'showEvents', 'showStay', 'showMeetings',
+          'stats', 'updatedBy', 'updatedAt'
+        ]) &&
+        isStr(data.kickerVi, 2, 160) &&
+        isStr(data.kickerEn, 2, 160) &&
+        isStr(data.headlineVi, 2, 180) &&
+        isStr(data.headlineEn, 2, 180) &&
+        isStr(data.subheadVi, 2, 500) &&
+        isStr(data.subheadEn, 2, 500) &&
+        isStr(data.heroImage, 1, 500) &&
+        isStr(data.visitorCenterAddress, 2, 220) &&
+        isStr(data.visitorCenterHours, 2, 120) &&
+        isStr(data.footerAboutVi, 2, 450) &&
+        isStr(data.footerAboutEn, 2, 450) &&
+        data.showExplore is bool &&
+        data.showNeighborhoods is bool &&
+        data.showEvents is bool &&
+        data.showStay is bool &&
+        data.showMeetings is bool &&
+        data.stats is list &&
+        data.stats.size() >= 1 &&
+        data.stats.size() <= 4 &&
+        isValidStatItem(data.stats[0]) &&
+        (data.stats.size() < 2 || isValidStatItem(data.stats[1])) &&
+        (data.stats.size() < 3 || isValidStatItem(data.stats[2])) &&
+        (data.stats.size() < 4 || isValidStatItem(data.stats[3])) &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidExperience(data) {
+      return data.keys().hasAll([
+          'category', 'featured', 'published', 'sortOrder',
+          'titleVi', 'titleEn', 'summaryVi', 'summaryEn',
+          'descriptionVi', 'descriptionEn', 'insiderTipVi', 'insiderTipEn',
+          'district', 'durationVi', 'durationEn', 'hours',
+          'priceVi', 'priceEn', 'address', 'transit', 'image',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'category', 'featured', 'published', 'sortOrder',
+          'titleVi', 'titleEn', 'summaryVi', 'summaryEn',
+          'descriptionVi', 'descriptionEn', 'insiderTipVi', 'insiderTipEn',
+          'district', 'durationVi', 'durationEn', 'hours',
+          'priceVi', 'priceEn', 'address', 'transit', 'image',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.category in ['history', 'dining', 'arts', 'outdoors'] &&
+        data.featured is bool &&
+        data.published is bool &&
+        data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+        isStr(data.titleVi, 2, 180) &&
+        isStr(data.titleEn, 2, 180) &&
+        isStr(data.summaryVi, 2, 420) &&
+        isStr(data.summaryEn, 2, 420) &&
+        isStr(data.descriptionVi, 2, 2000) &&
+        isStr(data.descriptionEn, 2, 2000) &&
+        isStr(data.insiderTipVi, 0, 500) &&
+        isStr(data.insiderTipEn, 0, 500) &&
+        isStr(data.district, 2, 100) &&
+        isStr(data.durationVi, 1, 80) &&
+        isStr(data.durationEn, 1, 80) &&
+        isStr(data.hours, 1, 120) &&
+        isStr(data.priceVi, 1, 120) &&
+        isStr(data.priceEn, 1, 120) &&
+        isStr(data.address, 2, 220) &&
+        isStr(data.transit, 2, 160) &&
+        isStr(data.image, 1, 500) &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidNeighborhood(data) {
+      return data.keys().hasAll([
+          'name', 'published', 'sortOrder',
+          'taglineVi', 'taglineEn', 'descriptionVi', 'descriptionEn',
+          'transit', 'vibeVi', 'vibeEn', 'walkScore', 'image', 'topPicks',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'name', 'published', 'sortOrder',
+          'taglineVi', 'taglineEn', 'descriptionVi', 'descriptionEn',
+          'transit', 'vibeVi', 'vibeEn', 'walkScore', 'image', 'topPicks',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.name, 2, 100) &&
+        data.published is bool &&
+        data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+        isStr(data.taglineVi, 2, 240) &&
+        isStr(data.taglineEn, 2, 240) &&
+        isStr(data.descriptionVi, 2, 1500) &&
+        isStr(data.descriptionEn, 2, 1500) &&
+        isStr(data.transit, 2, 160) &&
+        isStr(data.vibeVi, 2, 120) &&
+        isStr(data.vibeEn, 2, 120) &&
+        data.walkScore is number && data.walkScore >= 0 && data.walkScore <= 100 &&
+        isStr(data.image, 1, 500) &&
+        data.topPicks is list &&
+        data.topPicks.size() >= 1 &&
+        data.topPicks.size() <= 5 &&
+        isValidTopPick(data.topPicks[0]) &&
+        (data.topPicks.size() < 2 || isValidTopPick(data.topPicks[1])) &&
+        (data.topPicks.size() < 3 || isValidTopPick(data.topPicks[2])) &&
+        (data.topPicks.size() < 4 || isValidTopPick(data.topPicks[3])) &&
+        (data.topPicks.size() < 5 || isValidTopPick(data.topPicks[4])) &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidEvent(data) {
+      return data.keys().hasAll([
+          'dayNum', 'monthLabelVi', 'monthLabelEn', 'fullDateVi', 'fullDateEn',
+          'timeframe', 'category', 'published', 'sortOrder',
+          'titleVi', 'titleEn', 'venue', 'district', 'time',
+          'priceVi', 'priceEn', 'descriptionVi', 'descriptionEn', 'image',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'dayNum', 'monthLabelVi', 'monthLabelEn', 'fullDateVi', 'fullDateEn',
+          'timeframe', 'category', 'published', 'sortOrder',
+          'titleVi', 'titleEn', 'venue', 'district', 'time',
+          'priceVi', 'priceEn', 'descriptionVi', 'descriptionEn', 'image',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.dayNum, 1, 4) &&
+        isStr(data.monthLabelVi, 2, 20) &&
+        isStr(data.monthLabelEn, 2, 20) &&
+        isStr(data.fullDateVi, 2, 80) &&
+        isStr(data.fullDateEn, 2, 80) &&
+        data.timeframe in ['week', 'month', 'holiday'] &&
+        data.category in ['arts', 'sports', 'festival', 'exhibition'] &&
+        data.published is bool &&
+        data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+        isStr(data.titleVi, 2, 180) &&
+        isStr(data.titleEn, 2, 180) &&
+        isStr(data.venue, 2, 180) &&
+        isStr(data.district, 2, 100) &&
+        isStr(data.time, 2, 60) &&
+        isStr(data.priceVi, 1, 100) &&
+        isStr(data.priceEn, 1, 100) &&
+        isStr(data.descriptionVi, 2, 1500) &&
+        isStr(data.descriptionEn, 2, 1500) &&
+        isStr(data.image, 1, 500) &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidHotel(data) {
+      return data.keys().hasAll([
+          'name', 'district', 'neighborhoodKey', 'published', 'sortOrder',
+          'styleVi', 'styleEn', 'rateUsd', 'rating',
+          'summaryVi', 'summaryEn', 'descriptionVi', 'descriptionEn',
+          'address', 'amenitiesVi', 'amenitiesEn', 'image',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'name', 'district', 'neighborhoodKey', 'published', 'sortOrder',
+          'styleVi', 'styleEn', 'rateUsd', 'rating',
+          'summaryVi', 'summaryEn', 'descriptionVi', 'descriptionEn',
+          'address', 'amenitiesVi', 'amenitiesEn', 'image',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.name, 2, 140) &&
+        isStr(data.district, 2, 100) &&
+        data.neighborhoodKey in ['back-bay', 'seaport', 'beacon-hill'] &&
+        data.published is bool &&
+        data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+        isStr(data.styleVi, 2, 100) &&
+        isStr(data.styleEn, 2, 100) &&
+        data.rateUsd is number && data.rateUsd >= 10 && data.rateUsd <= 25000 &&
+        isStr(data.rating, 1, 10) &&
+        isStr(data.summaryVi, 2, 420) &&
+        isStr(data.summaryEn, 2, 420) &&
+        isStr(data.descriptionVi, 2, 1500) &&
+        isStr(data.descriptionEn, 2, 1500) &&
+        isStr(data.address, 2, 220) &&
+        data.amenitiesVi is list && data.amenitiesVi.size() >= 1 && data.amenitiesVi.size() <= 10 &&
+        isStr(data.amenitiesVi[0], 1, 100) &&
+        data.amenitiesEn is list && data.amenitiesEn.size() >= 1 && data.amenitiesEn.size() <= 10 &&
+        isStr(data.amenitiesEn[0], 1, 100) &&
+        isStr(data.image, 1, 500) &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidGuideLead(data) {
+      return data.keys().hasAll(['email', 'source', 'lang', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['email', 'source', 'lang', 'status', 'createdAt', 'updatedAt']) &&
+        isValidEmail(data.email) &&
+        data.source in ['visitor_guide', 'newsletter'] &&
+        data.lang in ['vi', 'en'] &&
+        data.status in ['new', 'contacted', 'archived'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidMeetingRfp(data) {
+      return data.keys().hasAll([
+          'organization', 'email', 'guests', 'timeframe', 'notes', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'organization', 'email', 'guests', 'timeframe', 'notes', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.organization, 2, 180) &&
+        isValidEmail(data.email) &&
+        isStr(data.guests, 2, 40) &&
+        isStr(data.timeframe, 2, 40) &&
+        isStr(data.notes, 0, 1200) &&
+        data.status in ['new', 'reviewing', 'responded', 'archived'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['email', 'displayName', 'role', 'addedBy', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'displayName', 'role', 'addedBy', 'createdAt']) &&
+        isValidEmail(data.email) &&
+        isStr(data.displayName, 1, 120) &&
+        data.role in ['admin', 'editor'] &&
+        isStr(data.addedBy, 1, 128) &&
+        data.createdAt is timestamp;
+    }
+
+    // -------------------------------------------------------------------------
+    // Collection Rules (Auth -> Static Validation -> Relational Lookup)
+    // -------------------------------------------------------------------------
+
+    // 1. SiteConfig (Homepage Hero, Stats, Footer, Section Visibility)
+    match /siteConfig/{configId} {
+      allow get: if isValidId(configId) && configId == 'main';
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(configId) && configId == 'main' &&
+        isValidSiteConfig(incoming()) &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(configId) && configId == 'main' &&
+        isValidSiteConfig(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'kickerVi', 'kickerEn', 'headlineVi', 'headlineEn',
+          'subheadVi', 'subheadEn', 'heroImage',
+          'visitorCenterAddress', 'visitorCenterHours',
+          'footerAboutVi', 'footerAboutEn',
+          'showExplore', 'showNeighborhoods', 'showEvents', 'showStay', 'showMeetings',
+          'stats', 'updatedBy', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if false;
+    }
+
+    // 2. Experiences (Things to Do)
+    match /experiences/{experienceId} {
+      allow get: if isValidId(experienceId) && (existing().published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(experienceId) &&
+        isValidExperience(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(experienceId) &&
+        isValidExperience(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'category', 'featured', 'published', 'sortOrder',
+          'titleVi', 'titleEn', 'summaryVi', 'summaryEn',
+          'descriptionVi', 'descriptionEn', 'insiderTipVi', 'insiderTipEn',
+          'district', 'durationVi', 'durationEn', 'hours',
+          'priceVi', 'priceEn', 'address', 'transit', 'image', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(experienceId) && isAdmin();
+    }
+
+    // 3. Neighborhoods
+    match /neighborhoods/{neighborhoodId} {
+      allow get: if isValidId(neighborhoodId) && (existing().published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(neighborhoodId) &&
+        isValidNeighborhood(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(neighborhoodId) &&
+        isValidNeighborhood(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'published', 'sortOrder',
+          'taglineVi', 'taglineEn', 'descriptionVi', 'descriptionEn',
+          'transit', 'vibeVi', 'vibeEn', 'walkScore', 'image', 'topPicks', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(neighborhoodId) && isAdmin();
+    }
+
+    // 4. Events Calendar
+    match /events/{eventId} {
+      allow get: if isValidId(eventId) && (existing().published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(eventId) &&
+        isValidEvent(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(eventId) &&
+        isValidEvent(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'dayNum', 'monthLabelVi', 'monthLabelEn', 'fullDateVi', 'fullDateEn',
+          'timeframe', 'category', 'published', 'sortOrder',
+          'titleVi', 'titleEn', 'venue', 'district', 'time',
+          'priceVi', 'priceEn', 'descriptionVi', 'descriptionEn', 'image', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(eventId) && isAdmin();
+    }
+
+    // 5. Hotels Directory
+    match /hotels/{hotelId} {
+      allow get: if isValidId(hotelId) && (existing().published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(hotelId) &&
+        isValidHotel(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(hotelId) &&
+        isValidHotel(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'district', 'neighborhoodKey', 'published', 'sortOrder',
+          'styleVi', 'styleEn', 'rateUsd', 'rating',
+          'summaryVi', 'summaryEn', 'descriptionVi', 'descriptionEn',
+          'address', 'amenitiesVi', 'amenitiesEn', 'image', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(hotelId) && isAdmin();
+    }
+
+    // 6. Guide Leads (PII isolated strictly to admins; public create only)
+    match /guideLeads/{leadId} {
+      allow get: if isVerifiedUser() && isValidId(leadId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(leadId) &&
+        isValidGuideLead(incoming()) &&
+        incoming().status == 'new' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(leadId) &&
+        isValidGuideLead(incoming()) &&
+        incoming().email == existing().email &&
+        incoming().source == existing().source &&
+        incoming().lang == existing().lang &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(leadId) && isAdmin();
+    }
+
+    // 7. Meeting RFPs (PII isolated strictly to admins; public create only)
+    match /meetingRfps/{rfpId} {
+      allow get: if isVerifiedUser() && isValidId(rfpId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(rfpId) &&
+        isValidMeetingRfp(incoming()) &&
+        incoming().status == 'new' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(rfpId) &&
+        isValidMeetingRfp(incoming()) &&
+        incoming().organization == existing().organization &&
+        incoming().email == existing().email &&
+        incoming().guests == existing().guests &&
+        incoming().timeframe == existing().timeframe &&
+        incoming().notes == existing().notes &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(rfpId) && isAdmin();
+    }
+
+    // 8. Admin Allowlist (RBAC)
+    match /admins/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (
+        request.auth.uid == userId || isAdmin()
+      );
+      allow list: if isBootstrappedAdmin();
+      allow create: if isBootstrappedAdmin() &&
+        isValidId(userId) &&
+        isValidAdminUser(incoming()) &&
+        incoming().addedBy == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update: if isBootstrappedAdmin() &&
+        isValidId(userId) &&
+        isValidAdminUser(incoming()) &&
+        incoming().addedBy == existing().addedBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'email']);
+      allow delete: if isBootstrappedAdmin() && isValidId(userId) && userId != request.auth.uid;
+    }
+
+    // Connection test probe path for startup check
+    match /test/connection {
+      allow get: if true;
+    }
+  }
+}
