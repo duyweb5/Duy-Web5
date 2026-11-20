@@ -482,19 +482,55 @@ function toHotelPayload(
 // -----------------------------------------------------------------------------
 // Admin Access Check
 // -----------------------------------------------------------------------------
+export type ResolvedAdminRole = 'superAdmin' | 'admin' | 'editor' | null;
+
+export function emailToAdminId(email: string): string {
+  return email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+}
+
+export async function resolveAdminRole(
+  uid: string,
+  email: string | null,
+  emailVerified: boolean
+): Promise<ResolvedAdminRole> {
+  if (!emailVerified) return null;
+  const normalizedEmail = email?.trim().toLowerCase() || '';
+  if (normalizedEmail === BOOTSTRAPPED_ADMIN_EMAIL) return 'superAdmin';
+
+  try {
+    // 1. Check UID-keyed admin record
+    const uidSnap = await getDoc(doc(db, 'admins', uid));
+    if (uidSnap.exists()) {
+      const role = uidSnap.data()?.role;
+      return role === 'editor' ? 'editor' : 'admin';
+    }
+
+    // 2. Check email-keyed pre-approved admin record
+    if (normalizedEmail) {
+      const emailDocId = emailToAdminId(normalizedEmail);
+      const emailSnap = await getDoc(doc(db, 'admins', emailDocId));
+      if (
+        emailSnap.exists() &&
+        String(emailSnap.data()?.email || '').toLowerCase() === normalizedEmail
+      ) {
+        const role = emailSnap.data()?.role;
+        return role === 'editor' ? 'editor' : 'admin';
+      }
+    }
+
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `admins/${uid}`);
+  }
+}
+
 export async function checkIsAdminUser(
   uid: string,
   email: string | null,
   emailVerified: boolean
 ): Promise<boolean> {
-  if (!emailVerified) return false;
-  if (email?.toLowerCase() === BOOTSTRAPPED_ADMIN_EMAIL) return true;
-  try {
-    const snap = await getDoc(doc(db, 'admins', uid));
-    return snap.exists();
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, `admins/${uid}`);
-  }
+  const role = await resolveAdminRole(uid, email, emailVerified);
+  return role !== null;
 }
 
 // -----------------------------------------------------------------------------
@@ -1082,20 +1118,16 @@ export function subscribeAdminUsers(
 
 export async function saveAdminUser(
   input: {
-    uid: string;
+    uid?: string;
     email: string;
     displayName: string;
     role: 'admin' | 'editor';
   },
   addedByUid: string
 ) {
-  const cleanUid = input.uid.trim();
   const safeEmail = clampStr(input.email.toLowerCase(), 160);
   const safeName = clampStr(input.displayName, 120);
 
-  if (!SAFE_UID_REGEX.test(cleanUid)) {
-    throw new Error('Mã UID không hợp lệ (chỉ gồm chữ, số, dấu - hoặc _).');
-  }
   if (!EMAIL_REGEX.test(safeEmail)) {
     throw new Error('Địa chỉ email không hợp lệ.');
   }
@@ -1103,9 +1135,17 @@ export async function saveAdminUser(
     throw new Error('Vui lòng nhập tên hiển thị.');
   }
 
-  const path = `admins/${cleanUid}`;
+  const targetDocId = input.uid?.trim()
+    ? input.uid.trim()
+    : emailToAdminId(safeEmail);
+
+  if (!SAFE_UID_REGEX.test(targetDocId)) {
+    throw new Error('Mã định danh quản trị viên không hợp lệ.');
+  }
+
+  const path = `admins/${targetDocId}`;
   try {
-    await setDoc(doc(db, 'admins', cleanUid), {
+    await setDoc(doc(db, 'admins', targetDocId), {
       email: safeEmail,
       displayName: safeName,
       role: input.role,

@@ -18,8 +18,9 @@ import {
   DEFAULT_CMS_HOTELS,
   DEFAULT_CMS_NEIGHBORHOODS,
   DEFAULT_SITE_CONFIG,
+  ResolvedAdminRole,
   SiteConfigData,
-  checkIsAdminUser,
+  resolveAdminRole,
   subscribePublicCms,
 } from './lib/cmsService';
 import { auth } from './lib/firebase';
@@ -105,8 +106,9 @@ function MeetBostonApp() {
   // Firebase Auth + Admin RBAC state
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminRole, setAdminRole] = useState<ResolvedAdminRole>(null);
   const [checkingAdmin, setCheckingAdmin] = useState(false);
+  const isAdmin = adminRole !== null;
 
   // Live CMS Data (falls back smoothly to defaults if Firestore has not been seeded yet)
   const [cmsSiteConfig, setCmsSiteConfig] = useState<SiteConfigData | null>(null);
@@ -175,20 +177,20 @@ function MeetBostonApp() {
       setUser(nextUser);
       setAuthReady(true);
       if (!nextUser) {
-        setIsAdmin(false);
+        setAdminRole(null);
         setCheckingAdmin(false);
         return;
       }
       setCheckingAdmin(true);
       try {
-        const allowed = await checkIsAdminUser(
+        const resolved = await resolveAdminRole(
           nextUser.uid,
           nextUser.email,
           nextUser.emailVerified
         );
-        setIsAdmin(allowed);
+        setAdminRole(resolved);
       } catch {
-        setIsAdmin(false);
+        setAdminRole(null);
       } finally {
         setCheckingAdmin(false);
       }
@@ -242,6 +244,7 @@ function MeetBostonApp() {
         user={user}
         authReady={authReady}
         isAdmin={isAdmin}
+        adminRole={adminRole}
         checkingAdmin={checkingAdmin}
         onExitCms={exitAdminCms}
       />

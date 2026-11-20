@@ -23,11 +23,24 @@ service cloud.firestore {
       return isVerifiedUser() && request.auth.token.email == 'duyweb5@gmail.com';
     }
 
+    function emailToAdminId(email) {
+      return email.lower().replace('[^a-z0-9]', '_');
+    }
+
+    function isListedAdminByUid() {
+      return isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isListedAdminByEmail() {
+      return isVerifiedUser() &&
+        request.auth.token.email is string &&
+        exists(/databases/$(database)/documents/admins/$(emailToAdminId(request.auth.token.email))) &&
+        get(/databases/$(database)/documents/admins/$(emailToAdminId(request.auth.token.email))).data.email == request.auth.token.email.lower();
+    }
+
     function isAdmin() {
-      return isBootstrappedAdmin() || (
-        isVerifiedUser() &&
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
+      return isBootstrappedAdmin() || isListedAdminByUid() || isListedAdminByEmail();
     }
 
     function incoming() {
@@ -498,7 +511,9 @@ service cloud.firestore {
     // 8. Admin Allowlist (RBAC)
     match /admins/{userId} {
       allow get: if isVerifiedUser() && isValidId(userId) && (
-        request.auth.uid == userId || isAdmin()
+        request.auth.uid == userId ||
+        (request.auth.token.email is string && emailToAdminId(request.auth.token.email) == userId) ||
+        isAdmin()
       );
       allow list: if isBootstrappedAdmin();
       allow create: if isBootstrappedAdmin() &&

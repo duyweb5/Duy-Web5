@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { User } from 'firebase/auth';
 import {
   ArrowLeft,
+  BookOpen,
   Building2,
   Calendar,
   Check,
@@ -54,6 +55,7 @@ import {
   updateMeetingRfpStatus,
 } from '../lib/cmsService';
 import { signInWithGoogle, signOutAdmin } from '../lib/firebase';
+import { CmsAdminGuideDrawer } from './CmsAdminGuideDrawer';
 import {
   EventEditorModal,
   ExperienceEditorModal,
@@ -61,6 +63,7 @@ import {
   NeighborhoodEditorModal,
 } from './CmsEditors';
 import { ResilientImage } from './ResilientImage';
+import { ResolvedAdminRole } from '../lib/cmsService';
 
 type AdminTab =
   | 'overview'
@@ -76,6 +79,7 @@ interface CmsAdminWorkspaceProps {
   user: User | null;
   authReady: boolean;
   isAdmin: boolean;
+  adminRole: ResolvedAdminRole;
   checkingAdmin: boolean;
   onExitCms: () => void;
 }
@@ -84,6 +88,7 @@ export function CmsAdminWorkspace({
   user,
   authReady,
   isAdmin,
+  adminRole,
   checkingAdmin,
   onExitCms,
 }: CmsAdminWorkspaceProps) {
@@ -104,6 +109,7 @@ export function CmsAdminWorkspace({
   const [toast, setToast] = useState('');
   const [authError, setAuthError] = useState('');
   const [uidCopied, setUidCopied] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   // Add Admin form state (Super Admin only)
   const [newAdminUid, setNewAdminUid] = useState('');
@@ -515,10 +521,19 @@ export function CmsAdminWorkspace({
         </nav>
 
         <div className="border-t border-[#E3E7EE] p-4">
-          <p className="truncate text-xs font-semibold text-[#0F1B2B]">
-            {user.displayName || 'Administrator'}
-          </p>
-          <p className="truncate font-mono text-[11px] text-[#526071]">
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-xs font-semibold text-[#0F1B2B]">
+              {user.displayName || 'Administrator'}
+            </p>
+            <span className="shrink-0 font-mono text-[10px] font-bold uppercase text-[#C8102E]">
+              {adminRole === 'superAdmin'
+                ? 'Super Admin'
+                : adminRole === 'editor'
+                  ? 'Editor'
+                  : 'Admin'}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate font-mono text-[11px] text-[#526071]">
             {user.email}
           </p>
           <button
@@ -548,12 +563,25 @@ export function CmsAdminWorkspace({
             </h1>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             {toast && (
-              <span className="hidden text-xs font-semibold text-[#16A34A] sm:inline">
+              <span className="hidden text-xs font-semibold text-[#16A34A] md:inline">
                 {toast}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => setGuideOpen((v) => !v)}
+              aria-expanded={guideOpen}
+              className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border px-3.5 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                guideOpen
+                  ? 'border-[#0A2239] bg-[#0A2239] text-white'
+                  : 'border-[#0A2239]/25 bg-[#F7F8FA] text-[#0A2239] hover:border-[#0A2239] hover:bg-white'
+              }`}
+            >
+              <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Cẩm nang</span>
+            </button>
             <button
               type="button"
               onClick={onExitCms}
@@ -1736,29 +1764,16 @@ export function CmsAdminWorkspace({
             <div className="space-y-6">
               <div className="rounded-xl border border-[#E3E7EE] bg-white p-6">
                 <h2 className="font-display text-base font-bold text-[#0A2239]">
-                  Cấp quyền quản trị viên mới
+                  Cấp quyền quản trị viên mới bằng Gmail
                 </h2>
                 <p className="mt-1 text-sm text-[#526071]">
-                  Yêu cầu cộng tác viên mở trang <code className="font-mono text-xs text-[#0A2239]">#admin</code> và đăng nhập bằng Google để lấy <strong>Mã UID</strong>, sau đó nhập thông tin bên dưới để cấp quyền.
+                  Chỉ cần nhập <strong>Email Google</strong>, tên hiển thị và vai trò — người được thêm có thể đăng nhập ngay vào <code className="font-mono text-xs text-[#0A2239]">/admin</code> hoặc <code className="font-mono text-xs text-[#0A2239]">/#admin</code> mà không cần gửi mã UID trước.
                 </p>
 
                 <form
                   onSubmit={handleAddAdmin}
                   className="mt-5 grid gap-4 md:grid-cols-2"
                 >
-                  <div>
-                    <label className="block text-xs font-semibold text-[#526071]">
-                      Firebase UID *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newAdminUid}
-                      onChange={(e) => setNewAdminUid(e.target.value)}
-                      placeholder="VD: x8K2mPq9ZrT1aBcDeFgHiJkL"
-                      className="mt-1.5 h-10 w-full rounded-lg border border-[#D4DBE5] px-3 font-mono text-sm text-[#0F1B2B] focus:border-[#0A2239] focus:outline-none"
-                    />
-                  </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#526071]">
                       Email Google *
@@ -1799,6 +1814,18 @@ export function CmsAdminWorkspace({
                       <option value="admin">Quản trị viên (Admin)</option>
                       <option value="editor">Biên tập viên (Editor)</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#526071]">
+                      Firebase UID (Tùy chọn — bỏ trống sẽ tự nhận theo Gmail)
+                    </label>
+                    <input
+                      type="text"
+                      value={newAdminUid}
+                      onChange={(e) => setNewAdminUid(e.target.value)}
+                      placeholder="Để trống để cấp quyền trực tiếp theo Gmail"
+                      className="mt-1.5 h-10 w-full rounded-lg border border-[#D4DBE5] px-3 font-mono text-sm text-[#0F1B2B] focus:border-[#0A2239] focus:outline-none"
+                    />
                   </div>
 
                   {adminFormError && (
@@ -1969,6 +1996,17 @@ export function CmsAdminWorkspace({
           }}
         />
       )}
+      {/* Interactive Right-docked Admin CMS Guide Drawer */}
+      <CmsAdminGuideDrawer
+        open={guideOpen}
+        activeTab={activeTab}
+        currentUserRole={adminRole || 'admin'}
+        onClose={() => setGuideOpen(false)}
+        onNavigateTab={(tab) => {
+          setActiveTab(tab);
+          setSearchQuery('');
+        }}
+      />
     </div>
   );
 }
