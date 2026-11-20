@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowUpRight, Bookmark, Check } from 'lucide-react';
-import { COPY, EventItem, Language } from '../data/bostonData';
+import { EventItem, Language } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 
 interface EventsSectionProps {
   lang: Language;
@@ -17,7 +18,7 @@ export function EventsSection({
   onToggleSaveEvent,
   onSelectEvent,
 }: EventsSectionProps) {
-  const t = COPY[lang].events;
+  const t = useSiteCopy(lang).events;
   const [timeframe, setTimeframe] = useState<'all' | 'week' | 'month' | 'holiday'>('all');
   const [category, setCategory] = useState<
     'all' | 'arts' | 'sports' | 'festival' | 'exhibition'

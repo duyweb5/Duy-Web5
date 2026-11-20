@@ -365,6 +365,198 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
+    function isValidI18nConfig(data) {
+      return data.keys().hasAll([
+          'defaultLanguage', 'enableVi', 'enableEn',
+          'showLanguageSwitcher', 'autoDetectBrowser',
+          'viLabel', 'enLabel', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'defaultLanguage', 'enableVi', 'enableEn',
+          'showLanguageSwitcher', 'autoDetectBrowser',
+          'viLabel', 'enLabel', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.defaultLanguage in ['vi', 'en'] &&
+        data.enableVi is bool &&
+        data.enableEn is bool &&
+        (data.enableVi == true || data.enableEn == true) &&
+        ((data.defaultLanguage == 'vi' && data.enableVi == true) ||
+          (data.defaultLanguage == 'en' && data.enableEn == true)) &&
+        data.showLanguageSwitcher is bool &&
+        data.autoDetectBrowser is bool &&
+        isStr(data.viLabel, 1, 40) &&
+        isStr(data.enLabel, 1, 40) &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidUiTranslation(data) {
+      return data.keys().hasAll([
+          'group', 'keyPath', 'valueVi', 'valueEn', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'group', 'keyPath', 'valueVi', 'valueEn', 'updatedBy', 'updatedAt'
+        ]) &&
+        data.group in [
+          'nav', 'hero', 'explore', 'neighborhoods', 'events',
+          'stay', 'videos', 'drawer', 'modal', 'meetingsModal', 'footer'
+        ] &&
+        isStr(data.keyPath, 2, 120) &&
+        isStr(data.valueVi, 1, 600) &&
+        isStr(data.valueEn, 1, 600) &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidVideoChannel(data) {
+      return data.keys().hasAll([
+          'youtubeChannelId', 'handle', 'url', 'titleVi', 'titleEn',
+          'descriptionVi', 'descriptionEn', 'avatarUrl',
+          'ctaEnabled', 'ctaTitleVi', 'ctaTitleEn', 'ctaSubtitleVi', 'ctaSubtitleEn',
+          'ctaButtonLabelVi', 'ctaButtonLabelEn', 'ctaButtonUrl',
+          'published', 'videoCount', 'lastSyncedAt',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'youtubeChannelId', 'handle', 'url', 'titleVi', 'titleEn',
+          'descriptionVi', 'descriptionEn', 'avatarUrl',
+          'ctaEnabled', 'ctaTitleVi', 'ctaTitleEn', 'ctaSubtitleVi', 'ctaSubtitleEn',
+          'ctaButtonLabelVi', 'ctaButtonLabelEn', 'ctaButtonUrl',
+          'published', 'videoCount', 'lastSyncedAt',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.youtubeChannelId, 2, 120) &&
+        isStr(data.handle, 0, 100) &&
+        isStr(data.url, 5, 300) &&
+        isStr(data.titleVi, 1, 160) &&
+        isStr(data.titleEn, 1, 160) &&
+        isStr(data.descriptionVi, 0, 1200) &&
+        isStr(data.descriptionEn, 0, 1200) &&
+        isStr(data.avatarUrl, 0, 500) &&
+        data.ctaEnabled is bool &&
+        isStr(data.ctaTitleVi, 0, 180) &&
+        isStr(data.ctaTitleEn, 0, 180) &&
+        isStr(data.ctaSubtitleVi, 0, 360) &&
+        isStr(data.ctaSubtitleEn, 0, 360) &&
+        isStr(data.ctaButtonLabelVi, 0, 80) &&
+        isStr(data.ctaButtonLabelEn, 0, 80) &&
+        isStr(data.ctaButtonUrl, 0, 400) &&
+        data.published is bool &&
+        data.videoCount is number && data.videoCount >= 0 && data.videoCount <= 100000 &&
+        isStr(data.lastSyncedAt, 0, 60) &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVideoTopic(data) {
+      return data.keys().hasAll([
+          'channelId', 'youtubePlaylistId', 'titleVi', 'titleEn',
+          'descriptionVi', 'descriptionEn', 'slug', 'sortOrder', 'published',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'channelId', 'youtubePlaylistId', 'titleVi', 'titleEn',
+          'descriptionVi', 'descriptionEn', 'slug', 'sortOrder', 'published',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.channelId, 1, 128) &&
+        isStr(data.youtubePlaylistId, 0, 120) &&
+        isStr(data.titleVi, 1, 140) &&
+        isStr(data.titleEn, 1, 140) &&
+        isStr(data.descriptionVi, 0, 420) &&
+        isStr(data.descriptionEn, 0, 420) &&
+        isStr(data.slug, 1, 120) &&
+        data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 10000 &&
+        data.published is bool &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVideoItem(data) {
+      return data.keys().hasAll([
+          'channelId', 'topicId', 'youtubeId', 'channelName', 'thumbnail',
+          'duration', 'durationSeconds', 'publishedDate', 'viewCount',
+          'rawTitle', 'rawDescription', 'titleVi', 'titleEn',
+          'summaryVi', 'summaryEn', 'descriptionVi', 'descriptionEn',
+          'highlightsVi', 'highlightsEn', 'seoTitleVi', 'seoTitleEn',
+          'seoDescriptionVi', 'seoDescriptionEn', 'slugVi', 'slugEn',
+          'keywordsVi', 'keywordsEn', 'status', 'aiStatus',
+          'manuallyEdited', 'featured', 'sortOrder',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'channelId', 'topicId', 'youtubeId', 'channelName', 'thumbnail',
+          'duration', 'durationSeconds', 'publishedDate', 'viewCount',
+          'rawTitle', 'rawDescription', 'titleVi', 'titleEn',
+          'summaryVi', 'summaryEn', 'descriptionVi', 'descriptionEn',
+          'highlightsVi', 'highlightsEn', 'seoTitleVi', 'seoTitleEn',
+          'seoDescriptionVi', 'seoDescriptionEn', 'slugVi', 'slugEn',
+          'keywordsVi', 'keywordsEn', 'status', 'aiStatus',
+          'manuallyEdited', 'featured', 'sortOrder',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.channelId, 1, 128) &&
+        isStr(data.topicId, 0, 128) &&
+        isStr(data.youtubeId, 5, 32) &&
+        isStr(data.channelName, 1, 160) &&
+        isStr(data.thumbnail, 5, 500) &&
+        isStr(data.duration, 0, 24) &&
+        data.durationSeconds is number && data.durationSeconds >= 0 && data.durationSeconds <= 86400 &&
+        isStr(data.publishedDate, 0, 60) &&
+        data.viewCount is number && data.viewCount >= 0 && data.viewCount <= 2000000000 &&
+        isStr(data.rawTitle, 1, 240) &&
+        isStr(data.rawDescription, 0, 5000) &&
+        isStr(data.titleVi, 1, 200) &&
+        isStr(data.titleEn, 1, 200) &&
+        isStr(data.summaryVi, 0, 480) &&
+        isStr(data.summaryEn, 0, 480) &&
+        isStr(data.descriptionVi, 0, 3000) &&
+        isStr(data.descriptionEn, 0, 3000) &&
+        data.highlightsVi is list && data.highlightsVi.size() <= 5 &&
+        (data.highlightsVi.size() == 0 || isStr(data.highlightsVi[0], 1, 260)) &&
+        data.highlightsEn is list && data.highlightsEn.size() <= 5 &&
+        (data.highlightsEn.size() == 0 || isStr(data.highlightsEn[0], 1, 260)) &&
+        isStr(data.seoTitleVi, 0, 120) &&
+        isStr(data.seoTitleEn, 0, 120) &&
+        isStr(data.seoDescriptionVi, 0, 260) &&
+        isStr(data.seoDescriptionEn, 0, 260) &&
+        isStr(data.slugVi, 1, 120) &&
+        isStr(data.slugEn, 1, 120) &&
+        data.keywordsVi is list && data.keywordsVi.size() <= 10 &&
+        (data.keywordsVi.size() == 0 || isStr(data.keywordsVi[0], 1, 80)) &&
+        data.keywordsEn is list && data.keywordsEn.size() <= 10 &&
+        (data.keywordsEn.size() == 0 || isStr(data.keywordsEn[0], 1, 80)) &&
+        data.status in ['draft', 'published'] &&
+        data.aiStatus in ['pending', 'optimized', 'manual'] &&
+        data.manuallyEdited is bool &&
+        data.featured is bool &&
+        data.sortOrder is number && data.sortOrder >= 0 && data.sortOrder <= 100000 &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVideoGlossaryTerm(data) {
+      return data.keys().hasAll([
+          'sourceTerm', 'targetVi', 'targetEn', 'keepOriginal', 'notes',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'sourceTerm', 'targetVi', 'targetEn', 'keepOriginal', 'notes',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isStr(data.sourceTerm, 1, 120) &&
+        isStr(data.targetVi, 1, 140) &&
+        isStr(data.targetEn, 1, 140) &&
+        data.keepOriginal is bool &&
+        isStr(data.notes, 0, 300) &&
+        isStr(data.createdBy, 1, 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
     // -------------------------------------------------------------------------
     // Collection Rules (Auth -> Static Validation -> Relational Lookup)
     // -------------------------------------------------------------------------
@@ -599,6 +791,158 @@ service cloud.firestore {
         ]) &&
         isAdmin();
       allow delete: if isVerifiedUser() && isValidId(assetId) && isFullAdmin();
+    }
+
+    // 10. Global Bilingual Language Configuration (/i18nConfig/main)
+    match /i18nConfig/{configId} {
+      allow get: if isValidId(configId) && configId == 'main';
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(configId) && configId == 'main' &&
+        isValidI18nConfig(incoming()) &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(configId) && configId == 'main' &&
+        isValidI18nConfig(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'defaultLanguage', 'enableVi', 'enableEn',
+          'showLanguageSwitcher', 'autoDetectBrowser',
+          'viLabel', 'enLabel', 'updatedBy', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if false;
+    }
+
+    // 11. Public UI Translation Overrides (/uiTranslations/{entryId})
+    match /uiTranslations/{entryId} {
+      allow get: if isValidId(entryId);
+      allow list: if resource.data.group in [
+        'nav', 'hero', 'explore', 'neighborhoods', 'events',
+        'stay', 'videos', 'drawer', 'modal', 'meetingsModal', 'footer'
+      ] || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(entryId) &&
+        isValidUiTranslation(incoming()) &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(entryId) &&
+        isValidUiTranslation(incoming()) &&
+        incoming().group == existing().group &&
+        incoming().keyPath == existing().keyPath &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'valueVi', 'valueEn', 'updatedBy', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(entryId) && isAdmin();
+    }
+
+    // 12. YouTube Video Channels (/videoChannels/{channelId})
+    match /videoChannels/{channelId} {
+      allow get: if isValidId(channelId) && (existing().published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(channelId) &&
+        isValidVideoChannel(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(channelId) &&
+        isValidVideoChannel(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'youtubeChannelId', 'handle', 'url', 'titleVi', 'titleEn',
+          'descriptionVi', 'descriptionEn', 'avatarUrl',
+          'ctaEnabled', 'ctaTitleVi', 'ctaTitleEn', 'ctaSubtitleVi', 'ctaSubtitleEn',
+          'ctaButtonLabelVi', 'ctaButtonLabelEn', 'ctaButtonUrl',
+          'published', 'videoCount', 'lastSyncedAt', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(channelId) && isAdmin();
+    }
+
+    // 13. Video Topics / Playlists (/videoTopics/{topicId})
+    match /videoTopics/{topicId} {
+      allow get: if isValidId(topicId) && (existing().published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(topicId) &&
+        isValidVideoTopic(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(topicId) &&
+        isValidVideoTopic(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'channelId', 'youtubePlaylistId', 'titleVi', 'titleEn',
+          'descriptionVi', 'descriptionEn', 'slug', 'sortOrder', 'published', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(topicId) && isAdmin();
+    }
+
+    // 14. Video Library Items (/videos/{videoId})
+    match /videos/{videoId} {
+      allow get: if isValidId(videoId) && (existing().status == 'published' || isAdmin());
+      allow list: if resource.data.status == 'published' || isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(videoId) &&
+        isValidVideoItem(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(videoId) &&
+        isValidVideoItem(incoming()) &&
+        incoming().youtubeId == existing().youtubeId &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'channelId', 'topicId', 'channelName', 'thumbnail',
+          'duration', 'durationSeconds', 'publishedDate', 'viewCount',
+          'rawTitle', 'rawDescription', 'titleVi', 'titleEn',
+          'summaryVi', 'summaryEn', 'descriptionVi', 'descriptionEn',
+          'highlightsVi', 'highlightsEn', 'seoTitleVi', 'seoTitleEn',
+          'seoDescriptionVi', 'seoDescriptionEn', 'slugVi', 'slugEn',
+          'keywordsVi', 'keywordsEn', 'status', 'aiStatus',
+          'manuallyEdited', 'featured', 'sortOrder', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(videoId) && isAdmin();
+    }
+
+    // 15. AI Video Glossary / Translation Memory (/videoGlossary/{termId}) - Admin only
+    match /videoGlossary/{termId} {
+      allow get: if isVerifiedUser() && isValidId(termId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(termId) &&
+        isValidVideoGlossaryTerm(incoming()) &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow update: if isVerifiedUser() &&
+        isValidId(termId) &&
+        isValidVideoGlossaryTerm(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'sourceTerm', 'targetVi', 'targetEn', 'keepOriginal', 'notes', 'updatedAt'
+        ]) &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(termId) && isAdmin();
     }
 
     // Connection test probe path for startup check

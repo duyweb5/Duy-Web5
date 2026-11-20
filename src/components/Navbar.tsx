@@ -1,24 +1,52 @@
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { COPY, Language } from '../data/bostonData';
+import { Language } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 
 interface NavbarProps {
   lang: Language;
   savedCount: number;
+  isVideosPage?: boolean;
+  onNavigateHome?: (hash?: string) => void;
+  onNavigateVideos?: () => void;
   onOpenItinerary: () => void;
 }
 
-export function Navbar({ lang, savedCount, onOpenItinerary }: NavbarProps) {
+export function Navbar({
+  lang,
+  savedCount,
+  isVideosPage = false,
+  onNavigateHome,
+  onNavigateVideos,
+  onOpenItinerary,
+}: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const t = COPY[lang].nav;
+  const t = useSiteCopy(lang).nav;
 
   const links = [
-    { href: '#explore', label: t.explore },
-    { href: '#neighborhoods', label: t.neighborhoods },
-    { href: '#events', label: t.events },
-    { href: '#stay', label: t.stay },
-    { href: '#meetings', label: t.meetings },
+    { href: '#explore', label: t.explore, isVideos: false },
+    { href: '#neighborhoods', label: t.neighborhoods, isVideos: false },
+    { href: '#events', label: t.events, isVideos: false },
+    { href: '#stay', label: t.stay, isVideos: false },
+    { href: '/videos', label: t.videos, isVideos: true },
+    { href: '#meetings', label: t.meetings, isVideos: false },
   ];
+
+  const handleLinkClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    link: { href: string; isVideos: boolean }
+  ) => {
+    setMobileOpen(false);
+    if (link.isVideos && onNavigateVideos) {
+      e.preventDefault();
+      onNavigateVideos();
+      return;
+    }
+    if (!link.isVideos && isVideosPage && onNavigateHome) {
+      e.preventDefault();
+      onNavigateHome(link.href);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#E3E7EE] bg-white/95 backdrop-blur-md">
@@ -26,25 +54,39 @@ export function Navbar({ lang, savedCount, onOpenItinerary }: NavbarProps) {
         {/* Zone 1: Single text element Brand Wordmark */}
         <a
           href="#top"
+          onClick={(e) => {
+            if (isVideosPage && onNavigateHome) {
+              e.preventDefault();
+              onNavigateHome();
+            }
+          }}
           className="font-display text-xl font-extrabold tracking-tight text-[#0A2239] transition-colors hover:text-[#C8102E] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C8102E] whitespace-nowrap shrink-0"
         >
           Meet Boston
         </a>
 
-        {/* Zone 2: 5 concise single-line navigation links */}
+        {/* Zone 2: Concise single-line navigation links */}
         <nav
           aria-label="Primary"
-          className="hidden items-center gap-7 md:flex"
+          className="hidden items-center gap-6 md:flex"
         >
-          {links.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="relative py-1 text-sm font-semibold text-[#0F1B2B]/80 transition-colors duration-150 hover:text-[#0A2239] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-[#C8102E] after:transition-all after:duration-150 hover:after:w-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C8102E] whitespace-nowrap shrink-0"
-            >
-              {link.label}
-            </a>
-          ))}
+          {links.map((link) => {
+            const active = link.isVideos && isVideosPage;
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => handleLinkClick(e, link)}
+                className={`relative py-1 text-sm font-semibold transition-colors duration-150 after:absolute after:bottom-0 after:left-0 after:h-[2px] after:bg-[#C8102E] after:transition-all after:duration-150 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C8102E] whitespace-nowrap shrink-0 ${
+                  active
+                    ? 'text-[#0A2239] after:w-full'
+                    : 'text-[#0F1B2B]/80 hover:text-[#0A2239] after:w-0 hover:after:w-full'
+                }`}
+              >
+                {link.label}
+              </a>
+            );
+          })}
         </nav>
 
         {/* Zone 3: Single primary action CTA (desktop) + mobile menu toggle */}
@@ -85,7 +127,7 @@ export function Navbar({ lang, savedCount, onOpenItinerary }: NavbarProps) {
               <li key={link.href}>
                 <a
                   href={link.href}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={(e) => handleLinkClick(e, link)}
                   className="flex min-h-[44px] items-center text-base font-semibold text-[#0F1B2B] transition-colors hover:text-[#C8102E]"
                 >
                   {link.label}

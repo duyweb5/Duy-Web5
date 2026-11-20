@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, Search, X } from 'lucide-react';
 import {
-  COPY,
   EventItem,
   ExperienceItem,
   HotelItem,
   Language,
   NeighborhoodItem,
 } from '../data/bostonData';
+import { useI18nConfig, useSiteCopy } from '../lib/I18nContext';
 import { SiteConfigData } from '../lib/cmsService';
 import { ResilientImage } from './ResilientImage';
 
@@ -40,7 +40,8 @@ export function HeroSection({
   onChangeLang,
   onSelectSearchHit,
 }: HeroSectionProps) {
-  const t = COPY[lang].hero;
+  const t = useSiteCopy(lang).hero;
+  const i18nConfig = useI18nConfig();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<'all' | 'experience' | 'event' | 'hotel'>('all');
   const [isFocused, setIsFocused] = useState(false);
@@ -158,34 +159,38 @@ export function HeroSection({
               {kickerText}
             </p>
 
-            <div
-              role="group"
-              aria-label="Language switcher"
-              className="inline-flex items-center rounded-lg border border-white/25 bg-[#0A2239]/55 p-1 backdrop-blur-sm"
-            >
-              <button
-                type="button"
-                onClick={() => onChangeLang('vi')}
-                className={`min-h-[32px] rounded-md px-3 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
-                  lang === 'vi'
-                    ? 'bg-white text-[#0A2239]'
-                    : 'text-white/85 hover:text-white'
-                }`}
-              >
-                Tiếng Việt
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangeLang('en')}
-                className={`min-h-[32px] rounded-md px-3 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
-                  lang === 'en'
-                    ? 'bg-white text-[#0A2239]'
-                    : 'text-white/85 hover:text-white'
-                }`}
-              >
-                English
-              </button>
-            </div>
+            {i18nConfig.showLanguageSwitcher &&
+              i18nConfig.enableVi &&
+              i18nConfig.enableEn && (
+                <div
+                  role="group"
+                  aria-label="Language switcher"
+                  className="inline-flex items-center rounded-lg border border-white/25 bg-[#0A2239]/55 p-1 backdrop-blur-sm"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onChangeLang('vi')}
+                    className={`min-h-[32px] rounded-md px-3 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                      lang === 'vi'
+                        ? 'bg-white text-[#0A2239]'
+                        : 'text-white/85 hover:text-white'
+                    }`}
+                  >
+                    {i18nConfig.viLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChangeLang('en')}
+                    className={`min-h-[32px] rounded-md px-3 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                      lang === 'en'
+                        ? 'bg-white text-[#0A2239]'
+                        : 'text-white/85 hover:text-white'
+                    }`}
+                  >
+                    {i18nConfig.enLabel}
+                  </button>
+                </div>
+              )}
           </div>
 
           {/* Focal Hero Content */}

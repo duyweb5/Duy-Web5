@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Bookmark, Check, CheckCircle2 } from 'lucide-react';
-import { COPY, HotelItem, Language } from '../data/bostonData';
+import { HotelItem, Language } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 import { EMAIL_REGEX, submitGuideLead } from '../lib/cmsService';
 import { ResilientImage } from './ResilientImage';
 
@@ -23,7 +24,7 @@ export function StayAndPlanSection({
   onSelectHotel,
   onOpenMeetingsModal,
 }: StayAndPlanSectionProps) {
-  const t = COPY[lang].stay;
+  const t = useSiteCopy(lang).stay;
   const [districtFilter, setDistrictFilter] = useState<
     'all' | 'back-bay' | 'seaport' | 'beacon-hill'
   >('all');

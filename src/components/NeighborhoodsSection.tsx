@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Bookmark, Check, TrainFront } from 'lucide-react';
-import { COPY, Language, NeighborhoodItem } from '../data/bostonData';
+import { Language, NeighborhoodItem } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 import { ResilientImage } from './ResilientImage';
 
 interface NeighborhoodsSectionProps {
@@ -20,7 +21,7 @@ export function NeighborhoodsSection({
   savedIds,
   onToggleSaveNeighborhood,
 }: NeighborhoodsSectionProps) {
-  const t = COPY[lang].neighborhoods;
+  const t = useSiteCopy(lang).neighborhoods;
   const active = items.find((n) => n.id === selectedId) || items[0];
   const [feedback, setFeedback] = useState(false);
 

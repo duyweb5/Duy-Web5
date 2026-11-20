@@ -2,7 +2,7 @@ export type Language = 'vi' | 'en';
 
 export type ExperienceCategory = 'history' | 'dining' | 'arts' | 'outdoors';
 
-export type SavedItemType = 'experience' | 'event' | 'hotel' | 'neighborhood';
+export type SavedItemType = 'experience' | 'event' | 'hotel' | 'neighborhood' | 'video';
 
 export interface SavedItineraryItem {
   id: string;
@@ -658,6 +658,7 @@ export const COPY = {
       neighborhoods: 'Khu phố',
       events: 'Sự kiện',
       stay: 'Lưu trú',
+      videos: 'Video',
       meetings: 'Hội nghị',
       myTrip: 'Lịch trình của tôi',
       menuOpen: 'Mở menu điều hướng',
@@ -756,6 +757,22 @@ export const COPY = {
         'Đội ngũ Meet Boston hỗ trợ miễn phí khảo sát địa điểm tại BCEC, Hynes Convention Center, đặt khối phòng khách sạn và trải nghiệm đoàn khách quốc tế.',
       meetingsBtn: 'Gửi yêu cầu khảo sát (RFP)',
     },
+    videos: {
+      kicker: '05. Thư viện Video Boston',
+      title: 'Khám phá Boston qua góc nhìn thực tế',
+      subtitle:
+        'Tuyển tập video được phân nhóm theo chủ đề, tối ưu song ngữ Anh/Việt và điểm nhấn nổi bật giúp bạn cảm nhận trọn vẹn nhịp sống Boston trước chuyến đi.',
+      allTopics: 'Tất cả chủ đề',
+      searchPlaceholder: 'Tìm video theo từ khóa VI/EN...',
+      playlistQueue: 'Danh sách phát hiện tại',
+      prevVideo: 'Video trước',
+      nextVideo: 'Tiếp theo',
+      watchOnYoutube: 'Mở YouTube',
+      keyTakeaways: 'Điểm nổi bật trong video',
+      openFullLibrary: 'Mở thư viện đầy đủ',
+      browseAllHeading: 'Khám phá thêm video cùng chủ đề',
+      emptySearch: 'Không tìm thấy video phù hợp với từ khóa của bạn.',
+    },
     drawer: {
       title: 'Lịch trình Boston của tôi',
       subtitle: 'Sắp xếp các điểm đến, sự kiện và khách sạn bạn đã lưu theo từng ngày.',
@@ -813,6 +830,7 @@ export const COPY = {
             { label: '6 Khu phố biểu tượng', href: '#neighborhoods' },
             { label: 'Lịch sự kiện tháng này', href: '#events' },
             { label: 'Khách sạn chọn lọc', href: '#stay' },
+            { label: 'Thư viện Video Boston', href: '/videos' },
           ],
         },
         {
@@ -838,6 +856,7 @@ export const COPY = {
       neighborhoods: 'Neighborhoods',
       events: 'Events',
       stay: 'Places to Stay',
+      videos: 'Videos',
       meetings: 'Meetings',
       myTrip: 'My Itinerary',
       menuOpen: 'Open navigation menu',
@@ -936,6 +955,22 @@ export const COPY = {
         'Our destination specialists provide complimentary venue sourcing across BCEC, Hynes Convention Center, hotel room blocks, and group experiences.',
       meetingsBtn: 'Submit Meeting RFP',
     },
+    videos: {
+      kicker: '05. Boston Video Library',
+      title: 'Experience Boston Through Local Eyes',
+      subtitle:
+        'Curated topic playlists with bilingual EN/VI summaries and key takeaways so you can explore Boston’s landmarks, food, and neighborhoods before you arrive.',
+      allTopics: 'All Topics',
+      searchPlaceholder: 'Search videos in EN or VI...',
+      playlistQueue: 'Active Playlist Queue',
+      prevVideo: 'Previous',
+      nextVideo: 'Next',
+      watchOnYoutube: 'Watch on YouTube',
+      keyTakeaways: 'Key Highlights',
+      openFullLibrary: 'Full Video Library',
+      browseAllHeading: 'Browse More Videos',
+      emptySearch: 'No videos match your search query.',
+    },
     drawer: {
       title: 'My Boston Itinerary',
       subtitle: 'Organize your saved attractions, events, and hotels day by day.',
@@ -993,6 +1028,7 @@ export const COPY = {
             { label: 'Six Iconic Neighborhoods', href: '#neighborhoods' },
             { label: 'Upcoming Events Calendar', href: '#events' },
             { label: 'Curated Hotels', href: '#stay' },
+            { label: 'Boston Video Library', href: '/videos' },
           ],
         },
         {

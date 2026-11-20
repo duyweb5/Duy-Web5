@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, X } from 'lucide-react';
-import { COPY, Language } from '../data/bostonData';
+import { Language } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 import { EMAIL_REGEX, submitMeetingRfp } from '../lib/cmsService';
 
 interface MeetingsModalProps {
@@ -10,7 +11,8 @@ interface MeetingsModalProps {
 }
 
 export function MeetingsModal({ lang, open, onClose }: MeetingsModalProps) {
-  const t = COPY[lang].meetingsModal;
+  const siteCopy = useSiteCopy(lang);
+  const t = siteCopy.meetingsModal;
   const [org, setOrg] = useState('');
   const [email, setEmail] = useState('');
   const [guests, setGuests] = useState('150 - 500');
@@ -97,7 +99,7 @@ export function MeetingsModal({ lang, open, onClose }: MeetingsModalProps) {
           <button
             type="button"
             onClick={handleClose}
-            aria-label={COPY[lang].modal.close}
+            aria-label={siteCopy.modal.close}
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#E3E7EE] text-[#0F1B2B] hover:bg-[#F7F8FA]"
           >
             <X className="h-5 w-5" />

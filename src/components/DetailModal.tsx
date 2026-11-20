@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { Bookmark, Check, X } from 'lucide-react';
 import {
-  COPY,
   EventItem,
   ExperienceItem,
   HotelItem,
   Language,
 } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 import { ResilientImage } from './ResilientImage';
 
 export type DetailModalTarget =
@@ -30,7 +30,7 @@ export function DetailModal({
   onClose,
   onToggleSave,
 }: DetailModalProps) {
-  const t = COPY[lang].modal;
+  const t = useSiteCopy(lang).modal;
 
   useEffect(() => {
     if (!target) return;

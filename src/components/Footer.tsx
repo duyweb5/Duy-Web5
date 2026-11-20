@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, Lock } from 'lucide-react';
-import { COPY, Language } from '../data/bostonData';
+import { Language } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 import {
   EMAIL_REGEX,
   SiteConfigData,
@@ -20,7 +21,7 @@ export function Footer({
   onOpenItinerary,
   onOpenAdminCms,
 }: FooterProps) {
-  const t = COPY[lang].footer;
+  const t = useSiteCopy(lang).footer;
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const [submitting, setSubmitting] = useState(false);

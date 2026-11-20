@@ -330,6 +330,259 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "I18nConfig": {
+      "title": "I18nConfig",
+      "description": "Global bilingual (VI / EN) configuration for default language, active languages, browser detection, and switcher labels.",
+      "type": "object",
+      "properties": {
+        "defaultLanguage": { "type": "string", "enum": ["vi", "en"] },
+        "enableVi": { "type": "boolean" },
+        "enableEn": { "type": "boolean" },
+        "showLanguageSwitcher": { "type": "boolean" },
+        "autoDetectBrowser": { "type": "boolean" },
+        "viLabel": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "enLabel": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "updatedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "defaultLanguage",
+        "enableVi",
+        "enableEn",
+        "showLanguageSwitcher",
+        "autoDetectBrowser",
+        "viLabel",
+        "enLabel",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "UiTranslation": {
+      "title": "UiTranslation",
+      "description": "Customizable bilingual (VI / EN) UI copy override for static public portal labels.",
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "enum": [
+            "nav",
+            "hero",
+            "explore",
+            "neighborhoods",
+            "events",
+            "stay",
+            "videos",
+            "drawer",
+            "modal",
+            "meetingsModal",
+            "footer"
+          ]
+        },
+        "keyPath": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "valueVi": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "valueEn": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "updatedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "group",
+        "keyPath",
+        "valueVi",
+        "valueEn",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "VideoChannel": {
+      "title": "VideoChannel",
+      "description": "Connected YouTube channel metadata and customizable bilingual player CTA configuration.",
+      "type": "object",
+      "properties": {
+        "youtubeChannelId": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "handle": { "type": "string", "minLength": 0, "maxLength": 100 },
+        "url": { "type": "string", "minLength": 5, "maxLength": 300 },
+        "titleVi": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "titleEn": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "descriptionVi": { "type": "string", "minLength": 0, "maxLength": 1200 },
+        "descriptionEn": { "type": "string", "minLength": 0, "maxLength": 1200 },
+        "avatarUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "ctaEnabled": { "type": "boolean" },
+        "ctaTitleVi": { "type": "string", "minLength": 0, "maxLength": 180 },
+        "ctaTitleEn": { "type": "string", "minLength": 0, "maxLength": 180 },
+        "ctaSubtitleVi": { "type": "string", "minLength": 0, "maxLength": 360 },
+        "ctaSubtitleEn": { "type": "string", "minLength": 0, "maxLength": 360 },
+        "ctaButtonLabelVi": { "type": "string", "minLength": 0, "maxLength": 80 },
+        "ctaButtonLabelEn": { "type": "string", "minLength": 0, "maxLength": 80 },
+        "ctaButtonUrl": { "type": "string", "minLength": 0, "maxLength": 400 },
+        "published": { "type": "boolean" },
+        "videoCount": { "type": "number" },
+        "lastSyncedAt": { "type": "string", "minLength": 0, "maxLength": 60 },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "youtubeChannelId",
+        "handle",
+        "url",
+        "titleVi",
+        "titleEn",
+        "descriptionVi",
+        "descriptionEn",
+        "avatarUrl",
+        "ctaEnabled",
+        "ctaTitleVi",
+        "ctaTitleEn",
+        "ctaSubtitleVi",
+        "ctaSubtitleEn",
+        "ctaButtonLabelVi",
+        "ctaButtonLabelEn",
+        "ctaButtonUrl",
+        "published",
+        "videoCount",
+        "lastSyncedAt",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "VideoTopic": {
+      "title": "VideoTopic",
+      "description": "Bilingual YouTube playlist / topic category organizing videos in the library.",
+      "type": "object",
+      "properties": {
+        "channelId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "youtubePlaylistId": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "titleVi": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "titleEn": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "descriptionVi": { "type": "string", "minLength": 0, "maxLength": 420 },
+        "descriptionEn": { "type": "string", "minLength": 0, "maxLength": 420 },
+        "slug": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "sortOrder": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "channelId",
+        "youtubePlaylistId",
+        "titleVi",
+        "titleEn",
+        "descriptionVi",
+        "descriptionEn",
+        "slug",
+        "sortOrder",
+        "published",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "VideoItem": {
+      "title": "VideoItem",
+      "description": "YouTube video entry with bilingual VI/EN metadata, AI highlights, SEO tags, and manual edit protection.",
+      "type": "object",
+      "properties": {
+        "channelId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "topicId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "youtubeId": { "type": "string", "minLength": 5, "maxLength": 32 },
+        "channelName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "thumbnail": { "type": "string", "minLength": 5, "maxLength": 500 },
+        "duration": { "type": "string", "minLength": 0, "maxLength": 24 },
+        "durationSeconds": { "type": "number" },
+        "publishedDate": { "type": "string", "minLength": 0, "maxLength": 60 },
+        "viewCount": { "type": "number" },
+        "rawTitle": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "rawDescription": { "type": "string", "minLength": 0, "maxLength": 5000 },
+        "titleVi": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "titleEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "summaryVi": { "type": "string", "minLength": 0, "maxLength": 480 },
+        "summaryEn": { "type": "string", "minLength": 0, "maxLength": 480 },
+        "descriptionVi": { "type": "string", "minLength": 0, "maxLength": 3000 },
+        "descriptionEn": { "type": "string", "minLength": 0, "maxLength": 3000 },
+        "highlightsVi": { "type": "array", "description": "Up to 5 key takeaways in Vietnamese" },
+        "highlightsEn": { "type": "array", "description": "Up to 5 key takeaways in English" },
+        "seoTitleVi": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "seoTitleEn": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "seoDescriptionVi": { "type": "string", "minLength": 0, "maxLength": 260 },
+        "seoDescriptionEn": { "type": "string", "minLength": 0, "maxLength": 260 },
+        "slugVi": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "slugEn": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "keywordsVi": { "type": "array", "description": "Up to 10 SEO keywords in Vietnamese" },
+        "keywordsEn": { "type": "array", "description": "Up to 10 SEO keywords in English" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "aiStatus": { "type": "string", "enum": ["pending", "optimized", "manual"] },
+        "manuallyEdited": { "type": "boolean" },
+        "featured": { "type": "boolean" },
+        "sortOrder": { "type": "number" },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "channelId",
+        "topicId",
+        "youtubeId",
+        "channelName",
+        "thumbnail",
+        "duration",
+        "durationSeconds",
+        "publishedDate",
+        "viewCount",
+        "rawTitle",
+        "rawDescription",
+        "titleVi",
+        "titleEn",
+        "summaryVi",
+        "summaryEn",
+        "descriptionVi",
+        "descriptionEn",
+        "highlightsVi",
+        "highlightsEn",
+        "seoTitleVi",
+        "seoTitleEn",
+        "seoDescriptionVi",
+        "seoDescriptionEn",
+        "slugVi",
+        "slugEn",
+        "keywordsVi",
+        "keywordsEn",
+        "status",
+        "aiStatus",
+        "manuallyEdited",
+        "featured",
+        "sortOrder",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "VideoGlossaryTerm": {
+      "title": "VideoGlossaryTerm",
+      "description": "Domain terminology rule fed into Gemini AI for consistent bilingual video translation.",
+      "type": "object",
+      "properties": {
+        "sourceTerm": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "targetVi": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "targetEn": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "keepOriginal": { "type": "boolean" },
+        "notes": { "type": "string", "minLength": 0, "maxLength": 300 },
+        "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "sourceTerm",
+        "targetVi",
+        "targetEn",
+        "keepOriginal",
+        "notes",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -368,6 +621,30 @@
     "/mediaAssets/{assetId}": {
       "schema": { "$ref": "#/entities/MediaAsset" },
       "description": "Centralized CMS Media Library assets with SEO filenames, bilingual Alt text, and optimization stats."
+    },
+    "/i18nConfig/{configId}": {
+      "schema": { "$ref": "#/entities/I18nConfig" },
+      "description": "Global bilingual settings for Vietnamese & English activation, default locale, and switcher labels (primary doc: main)."
+    },
+    "/uiTranslations/{entryId}": {
+      "schema": { "$ref": "#/entities/UiTranslation" },
+      "description": "CMS-managed Vietnamese and English overrides for static public interface labels."
+    },
+    "/videoChannels/{channelId}": {
+      "schema": { "$ref": "#/entities/VideoChannel" },
+      "description": "Connected YouTube channels and bilingual player CTA configuration."
+    },
+    "/videoTopics/{topicId}": {
+      "schema": { "$ref": "#/entities/VideoTopic" },
+      "description": "Bilingual topic/playlist buckets organizing videos in the library."
+    },
+    "/videos/{videoId}": {
+      "schema": { "$ref": "#/entities/VideoItem" },
+      "description": "YouTube videos with bilingual VI/EN SEO metadata, highlights, and manual edit lock."
+    },
+    "/videoGlossary/{termId}": {
+      "schema": { "$ref": "#/entities/VideoGlossaryTerm" },
+      "description": "Admin-curated AI translation memory glossary terms for consistent bilingual video editing."
     }
   }
 }

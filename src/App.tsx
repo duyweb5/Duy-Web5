@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import {
   EventItem,
@@ -24,6 +24,23 @@ import {
   subscribePublicCms,
 } from './lib/cmsService';
 import { auth } from './lib/firebase';
+import { I18nProvider } from './lib/I18nContext';
+import {
+  DEFAULT_I18N_CONFIG,
+  I18nConfigData,
+  UiTranslationRecord,
+  subscribeI18nConfig,
+  subscribeUiTranslations,
+} from './lib/i18nService';
+import {
+  DEFAULT_VIDEOS,
+  DEFAULT_VIDEO_CHANNELS,
+  DEFAULT_VIDEO_TOPICS,
+  VideoChannelRecord,
+  VideoItemRecord,
+  VideoTopicRecord,
+  subscribePublicVideoLibrary,
+} from './lib/videoService';
 import { CmsAdminWorkspace } from './components/CmsAdminWorkspace';
 import { DetailModal, DetailModalTarget } from './components/DetailModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -36,8 +53,40 @@ import { MeetingsModal } from './components/MeetingsModal';
 import { Navbar } from './components/Navbar';
 import { NeighborhoodsSection } from './components/NeighborhoodsSection';
 import { StayAndPlanSection } from './components/StayAndPlanSection';
+import { VideoLibrarySection } from './components/VideoLibrarySection';
 
 const STORAGE_KEY = 'meet-boston-itinerary-v1';
+
+type AppRouteState = {
+  view: 'public' | 'videos' | 'admin';
+  videoSlug?: string;
+};
+
+function resolveLocationRoute(): AppRouteState {
+  const hash = window.location.hash.toLowerCase().replace(/\/+$/, '');
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  const lowerPath = path.toLowerCase();
+
+  if (hash === '#admin' || lowerPath === '/admin') {
+    return { view: 'admin' };
+  }
+  if (lowerPath === '/videos') {
+    return { view: 'videos' };
+  }
+  if (lowerPath.startsWith('/videos/')) {
+    return {
+      view: 'videos',
+      videoSlug: decodeURIComponent(path.slice('/videos/'.length)),
+    };
+  }
+  if (hash.startsWith('#video/')) {
+    return {
+      view: 'videos',
+      videoSlug: decodeURIComponent(window.location.hash.slice('#video/'.length)),
+    };
+  }
+  return { view: 'public' };
+}
 
 function buildStarterItinerary(
   exps: ExperienceItem[],
@@ -91,17 +140,9 @@ function buildStarterItinerary(
   return result;
 }
 
-function isAdminLocation(): boolean {
-  const hash = window.location.hash.toLowerCase().replace(/\/+$/, '');
-  const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
-  return hash === '#admin' || path === '/admin';
-}
-
 function MeetBostonApp() {
   const [lang, setLang] = useState<Language>('vi');
-  const [viewMode, setViewMode] = useState<'public' | 'admin'>(() =>
-    isAdminLocation() ? 'admin' : 'public'
-  );
+  const [route, setRoute] = useState<AppRouteState>(() => resolveLocationRoute());
 
   // Firebase Auth + Admin RBAC state
   const [user, setUser] = useState<User | null>(null);
@@ -118,7 +159,21 @@ function MeetBostonApp() {
   );
   const [cmsEvents, setCmsEvents] = useState<CmsEvent[] | null>(null);
   const [cmsHotels, setCmsHotels] = useState<CmsHotel[] | null>(null);
+  const [cmsI18nConfig, setCmsI18nConfig] = useState<I18nConfigData | null>(null);
+  const [uiTranslations, setUiTranslations] = useState<UiTranslationRecord[]>([]);
 
+  // Live Video Library Data (falls back smoothly to Lang Thang Boston starter showcase)
+  const [cmsVideoChannels, setCmsVideoChannels] = useState<
+    VideoChannelRecord[] | null
+  >(null);
+  const [cmsVideoTopics, setCmsVideoTopics] = useState<VideoTopicRecord[] | null>(
+    null
+  );
+  const [cmsVideos, setCmsVideos] = useState<VideoItemRecord[] | null>(null);
+
+  const userPickedLangRef = useRef(false);
+
+  const i18nConfig = cmsI18nConfig || DEFAULT_I18N_CONFIG;
   const siteConfig = cmsSiteConfig || DEFAULT_SITE_CONFIG;
   const experiences =
     cmsExperiences && cmsExperiences.length > 0
@@ -132,6 +187,17 @@ function MeetBostonApp() {
     cmsEvents && cmsEvents.length > 0 ? cmsEvents : DEFAULT_CMS_EVENTS;
   const hotels =
     cmsHotels && cmsHotels.length > 0 ? cmsHotels : DEFAULT_CMS_HOTELS;
+
+  const videoChannels =
+    cmsVideoChannels && cmsVideoChannels.length > 0
+      ? cmsVideoChannels
+      : DEFAULT_VIDEO_CHANNELS;
+  const videoTopics =
+    cmsVideoTopics && cmsVideoTopics.length > 0
+      ? cmsVideoTopics
+      : DEFAULT_VIDEO_TOPICS;
+  const videos =
+    cmsVideos && cmsVideos.length > 0 ? cmsVideos : DEFAULT_VIDEOS;
 
   const [selectedNeighborhoodId, setSelectedNeighborhoodId] = useState<string>(
     DEFAULT_CMS_NEIGHBORHOODS[0].id
@@ -154,14 +220,10 @@ function MeetBostonApp() {
   const [itineraryOpen, setItineraryOpen] = useState(false);
   const [meetingsOpen, setMeetingsOpen] = useState(false);
 
-  // Sync #admin hash and /admin path navigation
+  // Sync browser URL & hash navigation (/admin, /videos, /videos/:slug, #video/:slug)
   useEffect(() => {
     const onRouteChange = () => {
-      if (isAdminLocation()) {
-        setViewMode('admin');
-      } else if (viewMode === 'admin') {
-        setViewMode('public');
-      }
+      setRoute(resolveLocationRoute());
     };
     window.addEventListener('hashchange', onRouteChange);
     window.addEventListener('popstate', onRouteChange);
@@ -169,7 +231,7 @@ function MeetBostonApp() {
       window.removeEventListener('hashchange', onRouteChange);
       window.removeEventListener('popstate', onRouteChange);
     };
-  }, [viewMode]);
+  }, []);
 
   // Listen to Firebase Authentication
   useEffect(() => {
@@ -198,18 +260,66 @@ function MeetBostonApp() {
     return unsub;
   }, []);
 
-  // Subscribe to public published CMS content in real time
+  // Subscribe to public published CMS content, bilingual config, and Video Library in real time
   useEffect(() => {
-    if (viewMode !== 'public') return;
-    const unsub = subscribePublicCms({
+    if (route.view === 'admin') return;
+    const unsubCms = subscribePublicCms({
       onSiteConfig: setCmsSiteConfig,
       onExperiences: setCmsExperiences,
       onNeighborhoods: setCmsNeighborhoods,
       onEvents: setCmsEvents,
       onHotels: setCmsHotels,
     });
-    return unsub;
-  }, [viewMode]);
+    const unsubI18n = subscribeI18nConfig(setCmsI18nConfig);
+    const unsubTranslations = subscribeUiTranslations(setUiTranslations);
+    const unsubVideos = subscribePublicVideoLibrary({
+      onChannels: setCmsVideoChannels,
+      onTopics: setCmsVideoTopics,
+      onVideos: setCmsVideos,
+    });
+    return () => {
+      unsubCms();
+      unsubI18n();
+      unsubTranslations();
+      unsubVideos();
+    };
+  }, [route.view]);
+
+  // Enforce enabled languages & default/browser locale policy from CMS i18nConfig
+  useEffect(() => {
+    if (!i18nConfig.enableVi && lang === 'vi') {
+      setLang('en');
+      return;
+    }
+    if (!i18nConfig.enableEn && lang === 'en') {
+      setLang('vi');
+      return;
+    }
+    if (!userPickedLangRef.current && cmsI18nConfig) {
+      if (i18nConfig.autoDetectBrowser && typeof navigator !== 'undefined') {
+        const browserLang = (navigator.language || '').toLowerCase();
+        if (browserLang.startsWith('en') && i18nConfig.enableEn) {
+          setLang('en');
+          return;
+        }
+        if (browserLang.startsWith('vi') && i18nConfig.enableVi) {
+          setLang('vi');
+          return;
+        }
+      }
+      setLang(i18nConfig.defaultLanguage);
+    }
+  }, [cmsI18nConfig, i18nConfig, lang]);
+
+  // Keep <html lang="..."> synced for SEO & screen readers
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  const handlePublicChangeLang = (nextLang: Language) => {
+    userPickedLangRef.current = true;
+    setLang(nextLang);
+  };
 
   useEffect(() => {
     try {
@@ -225,20 +335,37 @@ function MeetBostonApp() {
   );
 
   const openAdminCms = () => {
-    window.location.hash = '#admin';
-    setViewMode('admin');
+    window.history.pushState(null, '', '/admin');
+    setRoute({ view: 'admin' });
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
   const exitAdminCms = () => {
-    if (isAdminLocation()) {
-      window.history.replaceState(null, '', '/');
-    }
-    setViewMode('public');
+    window.history.replaceState(null, '', '/');
+    setRoute({ view: 'public' });
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
-  if (viewMode === 'admin') {
+  const navigateToVideosPage = (slug?: string) => {
+    const nextUrl = slug ? `/videos/${slug}` : '/videos';
+    window.history.pushState(null, '', nextUrl);
+    setRoute({ view: 'videos', videoSlug: slug });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToHome = (hash?: string) => {
+    window.history.pushState(null, '', hash ? `/${hash}` : '/');
+    setRoute({ view: 'public' });
+    if (hash) {
+      window.setTimeout(() => {
+        document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth' });
+      }, 80);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  if (route.view === 'admin') {
     return (
       <CmsAdminWorkspace
         user={user}
@@ -307,6 +434,24 @@ function MeetBostonApp() {
     });
   };
 
+  const handleToggleVideo = (video: VideoItemRecord) => {
+    toggleItineraryItem({
+      id: video.id,
+      type: 'video',
+      day: 1,
+      title: {
+        vi: video.titleVi || video.rawTitle,
+        en: video.titleEn || video.titleVi || video.rawTitle,
+      },
+      subtitle: {
+        vi: video.duration ? `Video · ${video.duration}` : 'Video YouTube',
+        en: video.duration ? `Video · ${video.duration}` : 'YouTube Video',
+      },
+      district: video.channelName || 'Boston',
+      image: video.thumbnail,
+    });
+  };
+
   const handleSelectSearchHit = (hit: SearchHit) => {
     if (hit.kind === 'experience') {
       const exp = experiences.find((e) => e.id === hit.id);
@@ -346,106 +491,180 @@ function MeetBostonApp() {
     setSavedItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  return (
-    <div className="min-h-screen bg-white text-[#0F1B2B]">
-      <Navbar
-        lang={lang}
-        savedCount={savedItems.length}
-        onOpenItinerary={() => setItineraryOpen(true)}
-      />
+  const isVideosPage = route.view === 'videos';
 
-      <main>
-        <HeroSection
+  return (
+    <I18nProvider i18nConfig={i18nConfig} overrides={uiTranslations}>
+      <div className="min-h-screen bg-white text-[#0F1B2B]">
+        <Navbar
           lang={lang}
-          siteConfig={siteConfig}
-          experiences={experiences}
-          neighborhoods={neighborhoods}
-          events={events}
-          hotels={hotels}
-          onChangeLang={setLang}
-          onSelectSearchHit={handleSelectSearchHit}
+          savedCount={savedItems.length}
+          isVideosPage={isVideosPage}
+          onNavigateHome={navigateToHome}
+          onNavigateVideos={() => navigateToVideosPage()}
+          onOpenItinerary={() => setItineraryOpen(true)}
         />
 
-        {siteConfig.showExplore && (
-          <ExperiencesSection
-            lang={lang}
-            items={experiences}
-            savedIds={savedIds}
-            onToggleSave={handleToggleExperience}
-            onSelectExperience={(item) =>
-              setDetailTarget({ kind: 'experience', item })
-            }
-          />
+        {isVideosPage ? (
+          <main>
+            {/* Compact Language Switcher Bar on Dedicated /videos Page */}
+            {i18nConfig.showLanguageSwitcher &&
+              i18nConfig.enableVi &&
+              i18nConfig.enableEn && (
+                <div className="border-b border-[#E3E7EE] bg-white">
+                  <div className="mx-auto flex max-w-[1280px] items-center justify-end gap-2 px-6 py-2.5 lg:px-8">
+                    <span className="text-xs font-medium text-[#526071]">
+                      {lang === 'vi' ? 'Ngôn ngữ:' : 'Language:'}
+                    </span>
+                    <div className="inline-flex rounded-lg border border-[#E3E7EE] bg-[#F7F8FA] p-0.5 text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => handlePublicChangeLang('vi')}
+                        className={`rounded-md px-2.5 py-1 transition-colors ${
+                          lang === 'vi'
+                            ? 'bg-[#0A2239] text-white'
+                            : 'text-[#526071] hover:text-[#0A2239]'
+                        }`}
+                      >
+                        {i18nConfig.viLabel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePublicChangeLang('en')}
+                        className={`rounded-md px-2.5 py-1 transition-colors ${
+                          lang === 'en'
+                            ? 'bg-[#0A2239] text-white'
+                            : 'text-[#526071] hover:text-[#0A2239]'
+                        }`}
+                      >
+                        {i18nConfig.enLabel}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            <VideoLibrarySection
+              lang={lang}
+              channels={videoChannels}
+              topics={videoTopics}
+              videos={videos}
+              savedIds={savedIds}
+              onToggleSaveVideo={handleToggleVideo}
+              isDedicatedPage
+              initialSlug={route.videoSlug}
+              onNavigateHome={() => navigateToHome()}
+            />
+          </main>
+        ) : (
+          <main>
+            <HeroSection
+              lang={lang}
+              siteConfig={siteConfig}
+              experiences={experiences}
+              neighborhoods={neighborhoods}
+              events={events}
+              hotels={hotels}
+              onChangeLang={handlePublicChangeLang}
+              onSelectSearchHit={handleSelectSearchHit}
+            />
+
+            {siteConfig.showExplore && (
+              <ExperiencesSection
+                lang={lang}
+                items={experiences}
+                savedIds={savedIds}
+                onToggleSave={handleToggleExperience}
+                onSelectExperience={(item) =>
+                  setDetailTarget({ kind: 'experience', item })
+                }
+              />
+            )}
+
+            {siteConfig.showNeighborhoods && (
+              <NeighborhoodsSection
+                lang={lang}
+                items={neighborhoods}
+                selectedId={selectedNeighborhoodId}
+                onSelectId={setSelectedNeighborhoodId}
+                savedIds={savedIds}
+                onToggleSaveNeighborhood={handleToggleNeighborhood}
+              />
+            )}
+
+            {siteConfig.showEvents && (
+              <EventsSection
+                lang={lang}
+                items={events}
+                savedIds={savedIds}
+                onToggleSaveEvent={handleToggleEvent}
+                onSelectEvent={(item) =>
+                  setDetailTarget({ kind: 'event', item })
+                }
+              />
+            )}
+
+            {siteConfig.showStay && (
+              <StayAndPlanSection
+                lang={lang}
+                hotels={hotels}
+                showMeetings={siteConfig.showMeetings}
+                savedIds={savedIds}
+                onToggleSaveHotel={handleToggleHotel}
+                onSelectHotel={(item) =>
+                  setDetailTarget({ kind: 'hotel', item })
+                }
+                onOpenMeetingsModal={() => setMeetingsOpen(true)}
+              />
+            )}
+
+            <VideoLibrarySection
+              lang={lang}
+              channels={videoChannels}
+              topics={videoTopics}
+              videos={videos}
+              savedIds={savedIds}
+              onToggleSaveVideo={handleToggleVideo}
+              onNavigateDedicated={navigateToVideosPage}
+            />
+          </main>
         )}
 
-        {siteConfig.showNeighborhoods && (
-          <NeighborhoodsSection
-            lang={lang}
-            items={neighborhoods}
-            selectedId={selectedNeighborhoodId}
-            onSelectId={setSelectedNeighborhoodId}
-            savedIds={savedIds}
-            onToggleSaveNeighborhood={handleToggleNeighborhood}
-          />
-        )}
+        <Footer
+          lang={lang}
+          siteConfig={siteConfig}
+          onOpenItinerary={() => setItineraryOpen(true)}
+          onOpenAdminCms={openAdminCms}
+        />
 
-        {siteConfig.showEvents && (
-          <EventsSection
-            lang={lang}
-            items={events}
-            savedIds={savedIds}
-            onToggleSaveEvent={handleToggleEvent}
-            onSelectEvent={(item) => setDetailTarget({ kind: 'event', item })}
-          />
-        )}
+        <DetailModal
+          lang={lang}
+          target={detailTarget}
+          isSaved={detailTarget ? savedIds.has(detailTarget.item.id) : false}
+          onClose={() => setDetailTarget(null)}
+          onToggleSave={handleToggleModalTarget}
+        />
 
-        {siteConfig.showStay && (
-          <StayAndPlanSection
-            lang={lang}
-            hotels={hotels}
-            showMeetings={siteConfig.showMeetings}
-            savedIds={savedIds}
-            onToggleSaveHotel={handleToggleHotel}
-            onSelectHotel={(item) => setDetailTarget({ kind: 'hotel', item })}
-            onOpenMeetingsModal={() => setMeetingsOpen(true)}
-          />
-        )}
-      </main>
+        <ItineraryDrawer
+          lang={lang}
+          open={itineraryOpen}
+          items={savedItems}
+          onClose={() => setItineraryOpen(false)}
+          onChangeDay={handleChangeDay}
+          onRemoveItem={handleRemoveItem}
+          onClearAll={() => setSavedItems([])}
+          onLoadStarter={() =>
+            setSavedItems(buildStarterItinerary(experiences, hotels))
+          }
+        />
 
-      <Footer
-        lang={lang}
-        siteConfig={siteConfig}
-        onOpenItinerary={() => setItineraryOpen(true)}
-        onOpenAdminCms={openAdminCms}
-      />
-
-      <DetailModal
-        lang={lang}
-        target={detailTarget}
-        isSaved={detailTarget ? savedIds.has(detailTarget.item.id) : false}
-        onClose={() => setDetailTarget(null)}
-        onToggleSave={handleToggleModalTarget}
-      />
-
-      <ItineraryDrawer
-        lang={lang}
-        open={itineraryOpen}
-        items={savedItems}
-        onClose={() => setItineraryOpen(false)}
-        onChangeDay={handleChangeDay}
-        onRemoveItem={handleRemoveItem}
-        onClearAll={() => setSavedItems([])}
-        onLoadStarter={() =>
-          setSavedItems(buildStarterItinerary(experiences, hotels))
-        }
-      />
-
-      <MeetingsModal
-        lang={lang}
-        open={meetingsOpen}
-        onClose={() => setMeetingsOpen(false)}
-      />
-    </div>
+        <MeetingsModal
+          lang={lang}
+          open={meetingsOpen}
+          onClose={() => setMeetingsOpen(false)}
+        />
+      </div>
+    </I18nProvider>
   );
 }
 

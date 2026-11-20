@@ -7,7 +7,9 @@ export type GuideModuleTabId =
   | 'neighborhoods'
   | 'events'
   | 'hotels'
+  | 'videos'
   | 'media'
+  | 'languages'
   | 'leads'
   | 'admins';
 
@@ -218,6 +220,13 @@ export const ROLE_MATRIX_ROWS: RoleMatrixRow[] = [
     member: 'Không',
   },
   {
+    capability: 'Quản lý 2 Ngôn ngữ VI/EN (Cấu hình, Nhãn UI, Kiểm tra song ngữ)',
+    superAdmin: 'Toàn quyền',
+    admin: 'Toàn quyền',
+    editor: 'Sửa dịch & Rà soát',
+    member: 'Không',
+  },
+  {
     capability: 'Thêm / thu hồi tài khoản Admin & Editor',
     superAdmin: 'Duy nhất',
     admin: 'Không',
@@ -368,6 +377,46 @@ export const GUIDE_TOPICS: GuideTopic[] = [
     tips: [
       'Ưu tiên giữ định dạng WebP ở chất lượng 80–84% giúp giảm 70–95% dung lượng so với ảnh gốc mà mắt thường không thấy giảm nét.',
       'Ảnh nhập từ Google Drive được tải bản sạch về nén WebP và lưu độc lập trên kho Media của web, nên không bao giờ bị lỗi chết link hoặc chặn quyền xem từ Drive.',
+    ],
+  },
+  {
+    id: 'topic-languages',
+    tabId: 'languages',
+    category: 'module',
+    title: 'Quản lý 2 Ngôn ngữ (Tiếng Việt & English)',
+    subtitle: 'Cấu hình ngôn ngữ mặc định, sửa trực tiếp mọi nhãn giao diện và kiểm tra thiếu dịch',
+    roles: ['superAdmin', 'admin', 'editor'],
+    purpose:
+      'Quản lý tập trung toàn bộ hệ thống song ngữ VI / EN của trang web công khai lẫn giao diện quản trị: chọn ngôn ngữ mặc định, bật/tắt ngôn ngữ, tùy biến nhãn giao diện cố định và kiểm tra độ hoàn thiện dịch thuật trên mọi module.',
+    steps: [
+      'Mở tab "Ngôn ngữ (VI / EN)" ở thanh menu bên trái (hoặc bấm nút VI | EN ở góc trên bên phải để đổi ngôn ngữ giao diện CMS).',
+      'Tab con "Cấu hình ngôn ngữ": bật/tắt Tiếng Việt hoặc English, chọn ngôn ngữ mặc định cho khách mới, bật tùy chọn tự nhận diện ngôn ngữ trình duyệt và đổi nhãn nút chuyển đổi trên Hero.',
+      'Tab con "Nhãn giao diện": tìm kiếm và chỉnh sửa trực tiếp các nhãn cố định (Menu, Nút bấm, Bộ lọc, Form RFP, Bản tin, Footer) song song 2 cột VI / EN — hỗ trợ Lưu từng dòng, Lưu hàng loạt, Xuất/Nhập JSON sao lưu và Khôi phục mặc định.',
+      'Tab con "Kiểm tra song ngữ": xem tiến độ hoàn thiện VI/EN theo từng module (Hero, Trải nghiệm, Khu phố, Sự kiện, Khách sạn, Alt ảnh Media), lọc các mục thiếu dịch hoặc trùng lặp VI/EN rồi bấm "Mở sửa" để nhảy thẳng vào cửa sổ biên tập.',
+    ],
+    tips: [
+      'Hệ thống luôn giữ ít nhất 1 ngôn ngữ được bật để tránh trang công khai rơi vào trạng thái trống ngôn ngữ.',
+      'Sử dụng nút "Xuất JSON" trước khi gửi bảng từ vựng cho biên dịch viên, sau đó "Nhập JSON" để cập nhật hàng loạt chỉ trong 1 lần bấm.',
+    ],
+  },
+  {
+    id: 'topic-videos',
+    tabId: 'videos',
+    category: 'module',
+    title: 'Thư viện Video YouTube & Động cơ Gemini AI Song ngữ SEO',
+    subtitle: 'Đồng bộ kênh YouTube tự động, dịch ngữ cảnh Anh/Việt, SEO VideoObject & Bộ thuật ngữ AI',
+    roles: ['superAdmin', 'admin', 'editor'],
+    purpose:
+      'Nhập toàn bộ danh sách phát (Playlist) và video từ một kênh YouTube có sẵn, dùng Google Gemini AI chuẩn hóa tiêu đề, dịch song ngữ VI/EN chuyên sâu theo ngữ cảnh, sinh mô tả SEO/Slug/Điểm nổi bật và quản lý khối CTA dưới trình phát.',
+    steps: [
+      'Vào tab "Thư viện Video & AI" → tab con "Đồng bộ Kênh YouTube & CTA", dán link kênh YouTube (hoặc bấm nút chọn nhanh kênh mẫu Lang Thang Boston) và bấm "Quét dữ liệu kênh".',
+      'Chọn các chủ đề (Playlist) muốn nạp, giữ tùy chọn tự động dịch tên chủ đề bằng Gemini AI, rồi bấm "Đồng bộ vào Thư viện (Không ghi đè)".',
+      'Sang tab con "Từ điển Thuật ngữ AI" để khai báo hoặc nạp bộ thuật ngữ chuẩn (Freedom Trail, Quincy Market, Lobster Roll...) giúp AI dịch đồng nhất 100%.',
+      'Quay lại "Danh sách Video", bấm "AI Tối ưu hàng loạt" hoặc mở từng video → bấm "AI Đề xuất Song ngữ & SEO (Xem trước)" để duyệt bản dịch 2 cột VI/EN, bật "Khóa chỉnh tay" nếu muốn bảo vệ nội dung trong các lần đồng bộ sau.',
+    ],
+    tips: [
+      'Cơ chế đồng bộ tăng trưởng chỉ thêm video mới và không bao giờ ghi đè các video đã chỉnh tay hoặc đã tối ưu AI.',
+      'Trang công khai tự động tạo liên kết sâu /videos/{slug} và bơm Schema.org VideoObject JSON-LD chuẩn SEO cho từng video.',
     ],
   },
   {

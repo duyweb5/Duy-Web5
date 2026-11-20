@@ -12,8 +12,10 @@ import {
   Database,
   Eye,
   EyeOff,
+  Film,
   Image as ImageIcon,
   Inbox,
+  Languages,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -26,6 +28,7 @@ import {
   Upload,
   Users,
 } from 'lucide-react';
+import { Language } from '../data/bostonData';
 import {
   AdminUserRecord,
   BOOTSTRAPPED_ADMIN_EMAIL,
@@ -62,6 +65,14 @@ import {
   MediaAssetRecord,
   subscribeMediaAssets,
 } from '../lib/mediaService';
+import {
+  AuditEntityKind,
+  DEFAULT_I18N_CONFIG,
+  I18nConfigData,
+  UiTranslationRecord,
+  subscribeI18nConfig,
+  subscribeUiTranslations,
+} from '../lib/i18nService';
 import { CmsAdminGuideDrawer } from './CmsAdminGuideDrawer';
 import {
   EventEditorModal,
@@ -70,10 +81,21 @@ import {
   MediaPickerRequest,
   NeighborhoodEditorModal,
 } from './CmsEditors';
+import { LanguageManagerTab } from './LanguageManagerTab';
 import { MediaLibraryTab } from './MediaLibraryTab';
 import { MediaManagerModal, MediaUsageRef } from './MediaManagerModal';
 import { ResilientImage } from './ResilientImage';
+import { VideoLibraryTab } from './VideoLibraryTab';
 import { ResolvedAdminRole } from '../lib/cmsService';
+import {
+  VideoChannelRecord,
+  VideoGlossaryTermRecord,
+  VideoItemRecord,
+  VideoTopicRecord,
+  subscribeAdminVideoLibrary,
+} from '../lib/videoService';
+
+const ADMIN_LANG_STORAGE_KEY = 'meet-boston-admin-lang-v1';
 
 type AdminTab =
   | 'overview'
@@ -82,7 +104,9 @@ type AdminTab =
   | 'neighborhoods'
   | 'events'
   | 'hotels'
+  | 'videos'
   | 'media'
+  | 'languages'
   | 'leads'
   | 'admins';
 
@@ -113,6 +137,27 @@ export function CmsAdminWorkspace({
   const [meetingRfps, setMeetingRfps] = useState<MeetingRfpRecord[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAssetRecord[]>([]);
+  const [i18nConfig, setI18nConfig] =
+    useState<I18nConfigData>(DEFAULT_I18N_CONFIG);
+  const [uiTranslations, setUiTranslations] = useState<UiTranslationRecord[]>(
+    []
+  );
+  const [videoChannels, setVideoChannels] = useState<VideoChannelRecord[]>([]);
+  const [videoTopics, setVideoTopics] = useState<VideoTopicRecord[]>([]);
+  const [videos, setVideos] = useState<VideoItemRecord[]>([]);
+  const [videoGlossary, setVideoGlossary] = useState<VideoGlossaryTermRecord[]>(
+    []
+  );
+  const [jumpEditVideoId, setJumpEditVideoId] = useState<string | null>(null);
+  const [adminLang, setAdminLang] = useState<Language>(() => {
+    try {
+      const saved = window.localStorage.getItem(ADMIN_LANG_STORAGE_KEY);
+      if (saved === 'en' || saved === 'vi') return saved;
+    } catch {
+      // Ignore storage read errors
+    }
+    return 'vi';
+  });
 
   const [siteDraft, setSiteDraft] = useState<SiteConfigData>(DEFAULT_SITE_CONFIG);
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,6 +206,15 @@ export function CmsAdminWorkspace({
     window.setTimeout(() => setToast(''), 3500);
   };
 
+  // Persist Admin CMS interface language preference
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ADMIN_LANG_STORAGE_KEY, adminLang);
+    } catch {
+      // Ignore storage write errors
+    }
+  }, [adminLang]);
+
   // Subscribe to all Firestore collections strictly after verified admin auth
   useEffect(() => {
     if (!authReady || !user || !isAdmin) return;
@@ -177,11 +231,63 @@ export function CmsAdminWorkspace({
       onMeetingRfps: setMeetingRfps,
     });
     const unsubMedia = subscribeMediaAssets(setMediaAssets);
+    const unsubI18n = subscribeI18nConfig((cfg) => {
+      setI18nConfig(cfg || DEFAULT_I18N_CONFIG);
+    });
+    const unsubTranslations = subscribeUiTranslations(setUiTranslations);
+    const unsubVideos = subscribeAdminVideoLibrary({
+      onChannels: setVideoChannels,
+      onTopics: setVideoTopics,
+      onVideos: setVideos,
+      onGlossary: setVideoGlossary,
+    });
     return () => {
       unsubCms();
       unsubMedia();
+      unsubI18n();
+      unsubTranslations();
+      unsubVideos();
     };
   }, [authReady, user, isAdmin]);
+
+  const handleJumpToAuditEdit = (kind: AuditEntityKind, entityId: string) => {
+    if (kind === 'site') {
+      setActiveTab('site');
+      return;
+    }
+    if (kind === 'experience') {
+      const found = experiences.find((item) => item.id === entityId);
+      setActiveTab('experiences');
+      if (found) setEditingExp(found);
+      return;
+    }
+    if (kind === 'neighborhood') {
+      const found = neighborhoods.find((item) => item.id === entityId);
+      setActiveTab('neighborhoods');
+      if (found) setEditingNb(found);
+      return;
+    }
+    if (kind === 'event') {
+      const found = events.find((item) => item.id === entityId);
+      setActiveTab('events');
+      if (found) setEditingEvt(found);
+      return;
+    }
+    if (kind === 'hotel') {
+      const found = hotels.find((item) => item.id === entityId);
+      setActiveTab('hotels');
+      if (found) setEditingHtl(found);
+      return;
+    }
+    if (kind === 'video') {
+      setActiveTab('videos');
+      setJumpEditVideoId(entityId);
+      return;
+    }
+    if (kind === 'media') {
+      setActiveTab('media');
+    }
+  };
 
   // Helper to scan where any image URL is currently used across the CMS
   const getMediaUsageRefs = (url: string): MediaUsageRef[] => {
@@ -485,37 +591,65 @@ export function CmsAdminWorkspace({
     }
   };
 
+  const isVi = adminLang === 'vi';
+
   const navItems: {
     id: AdminTab;
     label: string;
     icon: typeof LayoutDashboard;
     count?: number;
   }[] = [
-    { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'site', label: 'Trang chủ & Footer', icon: Settings },
+    { id: 'overview', label: isVi ? 'Tổng quan' : 'Overview', icon: LayoutDashboard },
+    {
+      id: 'site',
+      label: isVi ? 'Trang chủ & Footer' : 'Homepage & Footer',
+      icon: Settings,
+    },
     {
       id: 'experiences',
-      label: 'Trải nghiệm',
+      label: isVi ? 'Trải nghiệm' : 'Experiences',
       icon: Compass,
       count: experiences.length,
     },
     {
       id: 'neighborhoods',
-      label: 'Khu phố',
+      label: isVi ? 'Khu phố' : 'Neighborhoods',
       icon: MapPin,
       count: neighborhoods.length,
     },
-    { id: 'events', label: 'Sự kiện', icon: Calendar, count: events.length },
-    { id: 'hotels', label: 'Khách sạn', icon: Building2, count: hotels.length },
+    {
+      id: 'events',
+      label: isVi ? 'Sự kiện' : 'Events',
+      icon: Calendar,
+      count: events.length,
+    },
+    {
+      id: 'hotels',
+      label: isVi ? 'Khách sạn' : 'Hotels',
+      icon: Building2,
+      count: hotels.length,
+    },
+    {
+      id: 'videos',
+      label: isVi ? 'Thư viện Video & AI' : 'Video Library & AI',
+      icon: Film,
+      count: videos.length,
+    },
     {
       id: 'media',
-      label: 'Thư viện Media',
+      label: isVi ? 'Thư viện Media' : 'Media Library',
       icon: ImageIcon,
       count: mediaAssets.length,
     },
     {
+      id: 'languages',
+      label: isVi ? 'Ngôn ngữ (VI / EN)' : 'Languages (VI / EN)',
+      icon: Languages,
+      count: uiTranslations.length,
+    },
+    {
       id: 'leads',
-      label: 'Khách hàng & RFP',
+      label: isVi ? 'Khách hàng & RFP' : 'Leads & RFP',
       icon: Inbox,
       count: guideLeads.length + meetingRfps.length,
     },
@@ -523,7 +657,7 @@ export function CmsAdminWorkspace({
       ? [
           {
             id: 'admins' as AdminTab,
-            label: 'Quản trị viên',
+            label: isVi ? 'Quản trị viên' : 'Administrators',
             icon: Users,
             count: adminUsers.length + 1,
           },
@@ -532,7 +666,8 @@ export function CmsAdminWorkspace({
   ];
 
   const currentTabLabel =
-    navItems.find((n) => n.id === activeTab)?.label || 'Tổng quan';
+    navItems.find((n) => n.id === activeTab)?.label ||
+    (isVi ? 'Tổng quan' : 'Overview');
 
   return (
     <div className="flex min-h-screen bg-[#F7F8FA] text-[#0F1B2B]">
@@ -602,7 +737,7 @@ export function CmsAdminWorkspace({
             className="mt-3 inline-flex min-h-[36px] w-full items-center justify-center gap-2 rounded-lg border border-[#E3E7EE] px-3 text-xs font-semibold text-[#526071] hover:bg-[#F7F8FA] hover:text-[#C8102E]"
           >
             <LogOut className="h-3.5 w-3.5" />
-            <span>Đăng xuất</span>
+            <span>{isVi ? 'Đăng xuất' : 'Sign Out'}</span>
           </button>
         </div>
       </aside>
@@ -623,12 +758,41 @@ export function CmsAdminWorkspace({
             </h1>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             {toast && (
-              <span className="hidden text-xs font-semibold text-[#16A34A] md:inline">
+              <span className="hidden text-xs font-semibold text-[#16A34A] xl:inline">
                 {toast}
               </span>
             )}
+            {/* Admin CMS Interface Language Toggle */}
+            <div
+              role="group"
+              aria-label="Admin interface language"
+              className="inline-flex items-center rounded-lg border border-[#E3E7EE] bg-[#F7F8FA] p-0.5 shrink-0"
+            >
+              <button
+                type="button"
+                onClick={() => setAdminLang('vi')}
+                className={`min-h-[32px] rounded-md px-2.5 text-xs font-bold transition-colors whitespace-nowrap ${
+                  adminLang === 'vi'
+                    ? 'bg-[#0A2239] text-white'
+                    : 'text-[#526071] hover:text-[#0A2239]'
+                }`}
+              >
+                VI
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminLang('en')}
+                className={`min-h-[32px] rounded-md px-2.5 text-xs font-bold transition-colors whitespace-nowrap ${
+                  adminLang === 'en'
+                    ? 'bg-[#0A2239] text-white'
+                    : 'text-[#526071] hover:text-[#0A2239]'
+                }`}
+              >
+                EN
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => setGuideOpen((v) => !v)}
@@ -640,7 +804,7 @@ export function CmsAdminWorkspace({
               }`}
             >
               <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Cẩm nang</span>
+              <span>{isVi ? 'Cẩm nang' : 'Handbook'}</span>
             </button>
             <button
               type="button"
@@ -648,7 +812,7 @@ export function CmsAdminWorkspace({
               className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-[#E3E7EE] bg-white px-3.5 text-xs font-semibold text-[#0A2239] hover:bg-[#F7F8FA] whitespace-nowrap shrink-0"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Xem trang web</span>
+              <span>{isVi ? 'Xem trang web' : 'View Site'}</span>
             </button>
           </div>
         </header>
@@ -2018,6 +2182,21 @@ export function CmsAdminWorkspace({
             </div>
           )}
 
+          {/* TAB 8B: YOUTUBE VIDEO LIBRARY & GEMINI AI STUDIO */}
+          {activeTab === 'videos' && (
+            <VideoLibraryTab
+              uid={user.uid}
+              adminLang={adminLang}
+              channels={videoChannels}
+              topics={videoTopics}
+              videos={videos}
+              glossary={videoGlossary}
+              onNotice={showNotice}
+              initialEditVideoId={jumpEditVideoId}
+              onClearInitialEdit={() => setJumpEditVideoId(null)}
+            />
+          )}
+
           {/* TAB 9: MEDIA LIBRARY */}
           {activeTab === 'media' && (
             <MediaLibraryTab
@@ -2026,6 +2205,25 @@ export function CmsAdminWorkspace({
               getUsageRefs={getMediaUsageRefs}
               onOpenUploader={(tab) => setMediaStandaloneTab(tab)}
               onNotice={showNotice}
+            />
+          )}
+
+          {/* TAB 10: BILINGUAL LANGUAGES MANAGER (VI / EN) */}
+          {activeTab === 'languages' && (
+            <LanguageManagerTab
+              uid={user.uid}
+              adminLang={adminLang}
+              i18nConfig={i18nConfig}
+              overrides={uiTranslations}
+              siteConfig={siteConfig || siteDraft}
+              experiences={experiences}
+              neighborhoods={neighborhoods}
+              events={events}
+              hotels={hotels}
+              videos={videos}
+              mediaAssets={mediaAssets}
+              onNotice={showNotice}
+              onJumpToEdit={handleJumpToAuditEdit}
             />
           )}
         </main>

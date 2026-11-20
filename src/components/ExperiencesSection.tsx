@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { ArrowUpRight, Bookmark, Check } from 'lucide-react';
 import {
-  COPY,
   ExperienceCategory,
   ExperienceItem,
   Language,
 } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 import { ResilientImage } from './ResilientImage';
 
 interface ExperiencesSectionProps {
@@ -23,7 +23,7 @@ export function ExperiencesSection({
   onToggleSave,
   onSelectExperience,
 }: ExperiencesSectionProps) {
-  const t = COPY[lang].explore;
+  const t = useSiteCopy(lang).explore;
   const [activeCategory, setActiveCategory] = useState<'all' | ExperienceCategory>('all');
 
   const filterKeys: ('all' | ExperienceCategory)[] = [

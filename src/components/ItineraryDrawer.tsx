@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, Copy, Trash2, X } from 'lucide-react';
-import { COPY, Language, SavedItineraryItem } from '../data/bostonData';
+import { Language, SavedItineraryItem } from '../data/bostonData';
+import { useSiteCopy } from '../lib/I18nContext';
 import { ResilientImage } from './ResilientImage';
 
 interface ItineraryDrawerProps {
@@ -24,7 +25,8 @@ export function ItineraryDrawer({
   onClearAll,
   onLoadStarter,
 }: ItineraryDrawerProps) {
-  const t = COPY[lang].drawer;
+  const siteCopy = useSiteCopy(lang);
+  const t = siteCopy.drawer;
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -94,7 +96,7 @@ export function ItineraryDrawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label={COPY[lang].modal.close}
+            aria-label={siteCopy.modal.close}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#E3E7EE] text-[#0F1B2B] hover:bg-[#F7F8FA]"
           >
             <X className="h-5 w-5" />
