@@ -423,6 +423,9 @@ service cloud.firestore {
           'ctaEnabled', 'ctaTitleVi', 'ctaTitleEn', 'ctaSubtitleVi', 'ctaSubtitleEn',
           'ctaButtonLabelVi', 'ctaButtonLabelEn', 'ctaButtonUrl',
           'published', 'videoCount', 'lastSyncedAt',
+          'autoSyncEnabled', 'webSubEnabled', 'autoAiOptimize', 'autoPublishNew',
+          'webSubStatus', 'webSubSubscribedAt', 'webSubLeaseExpiresAt',
+          'lastAutoSyncStatus', 'lastAutoSyncSummary',
           'createdBy', 'createdAt', 'updatedAt'
         ]) &&
         isStr(data.youtubeChannelId, 2, 120) &&
@@ -444,6 +447,15 @@ service cloud.firestore {
         data.published is bool &&
         data.videoCount is number && data.videoCount >= 0 && data.videoCount <= 100000 &&
         isStr(data.lastSyncedAt, 0, 60) &&
+        (!('autoSyncEnabled' in data) || data.autoSyncEnabled is bool) &&
+        (!('webSubEnabled' in data) || data.webSubEnabled is bool) &&
+        (!('autoAiOptimize' in data) || data.autoAiOptimize is bool) &&
+        (!('autoPublishNew' in data) || data.autoPublishNew is bool) &&
+        (!('webSubStatus' in data) || data.webSubStatus in ['inactive', 'pending', 'active', 'error']) &&
+        (!('webSubSubscribedAt' in data) || isStr(data.webSubSubscribedAt, 0, 60)) &&
+        (!('webSubLeaseExpiresAt' in data) || isStr(data.webSubLeaseExpiresAt, 0, 60)) &&
+        (!('lastAutoSyncStatus' in data) || data.lastAutoSyncStatus in ['idle', 'success', 'partial', 'error']) &&
+        (!('lastAutoSyncSummary' in data) || isStr(data.lastAutoSyncSummary, 0, 400)) &&
         isStr(data.createdBy, 1, 128) &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
@@ -858,7 +870,11 @@ service cloud.firestore {
           'descriptionVi', 'descriptionEn', 'avatarUrl',
           'ctaEnabled', 'ctaTitleVi', 'ctaTitleEn', 'ctaSubtitleVi', 'ctaSubtitleEn',
           'ctaButtonLabelVi', 'ctaButtonLabelEn', 'ctaButtonUrl',
-          'published', 'videoCount', 'lastSyncedAt', 'updatedAt'
+          'published', 'videoCount', 'lastSyncedAt',
+          'autoSyncEnabled', 'webSubEnabled', 'autoAiOptimize', 'autoPublishNew',
+          'webSubStatus', 'webSubSubscribedAt', 'webSubLeaseExpiresAt',
+          'lastAutoSyncStatus', 'lastAutoSyncSummary',
+          'updatedAt'
         ]) &&
         isAdmin();
       allow delete: if isVerifiedUser() && isValidId(channelId) && isAdmin();
@@ -943,6 +959,14 @@ service cloud.firestore {
         ]) &&
         isAdmin();
       allow delete: if isVerifiedUser() && isValidId(termId) && isAdmin();
+    }
+
+    // 16. Automated Video Sync Audit Logs (/videoSyncLogs/{logId}) - Server-written only; Admin read/delete
+    match /videoSyncLogs/{logId} {
+      allow get: if isVerifiedUser() && isValidId(logId) && isAdmin();
+      allow list: if isAdmin();
+      allow create, update: if false;
+      allow delete: if isVerifiedUser() && isValidId(logId) && isAdmin();
     }
 
     // Connection test probe path for startup check

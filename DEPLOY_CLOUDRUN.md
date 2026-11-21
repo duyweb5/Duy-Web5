@@ -1,51 +1,50 @@
-# Tự động Deploy lên Google Cloud Run từ GitHub (Continuous Deployment)
+# Tự động Deploy Meet Boston lên Google Cloud Run (`https://meetboston.duyvo.win`)
 
-Dự án **Meet Boston** đã được cấu hình sẵn `Dockerfile` (Node 22 Slim + Nginx 1.27 Alpine), `nginx.conf` (tự động đọc `$PORT`, hỗ trợ `/admin`, không cache `index.html`), và `.dockerignore` tối ưu cho **Google Cloud Run Continuous Deployment**.
-
-Sau khi thiết lập 1 lần duy nhất bên dưới, **mỗi lần bạn đồng bộ (push) code từ AI Studio lên GitHub, Cloud Run sẽ tự động build lại và cập nhật lên `https://meetboston.duyvo.win/` trong khoảng 1–2 phút** — không cần bấm Publish / Republish thủ công nữa.
+Dự án **Meet Boston** chạy kiến trúc **Full-stack Node.js 22 (Express + Vite + Firebase Admin SDK + Google Gemini AI)** trong 1 container duy nhất tối ưu cho **Google Cloud Run Continuous Deployment**, hỗ trợ đầy đủ:
+- Trang công khai (`/`, `/videos`, `/videos/:slug`) và CMS quản trị (`/admin`).
+- API quét kênh YouTube, dịch song ngữ & tối ưu SEO bằng **Google Gemini AI**.
+- Tự động bắt video mới tức thì qua **YouTube WebSub (`/api/webhooks/youtube`)** + quét đối soát hàng ngày qua **Google Cloud Scheduler (`/api/cron/sync-youtube`)**.
 
 ---
 
 ## Bước 1: Đồng bộ code mới nhất lên GitHub
 1. Từ AI Studio, đồng bộ (push) toàn bộ mã nguồn mới nhất lên repository GitHub của bạn (nhánh `main`).
-2. Kiểm tra trên GitHub đảm bảo có đủ 3 file quan trọng ở thư mục gốc:
-   - `Dockerfile`
-   - `nginx.conf`
-   - `firebase-applet-config.json` (đã hợp nhất vào project `gen-lang-client-0440115237`)
+2. Đảm bảo Cloud Run Service gắn với `meetboston.duyvo.win` đã bật **Continuous Deployment** từ repository này (Build Type: `Dockerfile`, Source location: `/Dockerfile`).
 
 ---
 
-## Bước 2: Bật Continuous Deployment trên Google Cloud Run (Chỉ làm 1 lần)
-1. Mở **Google Cloud Console** → vào **Cloud Run** → bấm vào **Service** đang chạy web `meetboston.duyvo.win`.
-2. Trên thanh công cụ phía trên, bấm **"Set up continuous deployment"** (hoặc **"Edit continuous deployment"** nếu đã từng bật).
-3. Ở mục **Repository Provider**:
-   - Chọn **GitHub** → bấm **Authenticate** (nếu chưa liên kết) → chọn đúng **Repository** của bạn.
-   - Bấm **Next**.
-4. Ở mục **Build Configuration**:
-   - **Branch:** `^main$` (hoặc `^master$` nếu nhánh chính của bạn là `master`).
-   - **Build Type:** Chọn **Dockerfile**.
-   - **Source location:** `/Dockerfile` (mặc định).
-5. Bấm **Save**.
+## Bước 2: Chạy 1 lệnh tự động cấu hình IAM + Env + Cloud Scheduler trên Google Cloud Shell
+Mở [Google Cloud Shell](https://shell.cloud.google.com/?project=gen-lang-client-0440115237), clone/pull repo của bạn (hoặc dán trực tiếp nội dung script) và chạy:
 
-Ngay lập tức, Cloud Build sẽ chạy bản build đầu tiên và triển khai lên Cloud Run. Từ lần sau trở đi, **cứ push code lên GitHub là Cloud Run tự động build & deploy**.
+```bash
+bash scripts/setup-meetboston-cloudrun.sh
+```
+
+Script tự động thực hiện trọn gói:
+1. Tự nhận diện Cloud Run Service & Region trong dự án `gen-lang-client-0440115237`.
+2. Cấp đúng quyền tối thiểu **`roles/datastore.user`** cho Cloud Run Service Account (không cần file key JSON).
+3. Sinh tự động `CRON_SECRET`, `WEBSUB_SECRET` và gắn `PUBLIC_APP_URL=https://meetboston.duyvo.win` lên Cloud Run.
+4. Kiểm tra / tạo Domain Mapping cho `meetboston.duyvo.win`.
+5. Tạo hoặc cập nhật lịch **Cloud Scheduler** chạy 06:00 sáng mỗi ngày (`America/New_York`).
+6. Kiểm tra trực tiếp `https://meetboston.duyvo.win/api/health`.
+
+*(Mẹo: Nếu muốn gắn luôn khóa Gemini AI trong cùng lượt chạy, thêm `GEMINI_API_KEY="AIza..." bash scripts/setup-meetboston-cloudrun.sh`).*
 
 ---
 
 ## Bước 3: Kiểm tra 1 lần duy nhất cho Domain `meetboston.duyvo.win`
-
-Vì dự án đã hợp nhất cả **Firestore**, **Auth**, **Storage** và **Google Drive OAuth** vào cùng Google Cloud Project **`gen-lang-client-0440115237`**, hãy kiểm tra nhanh 2 mục sau trong [Firebase Console (`gen-lang-client-0440115237`)](https://console.firebase.google.com/project/gen-lang-client-0440115237):
-
-1. **Cho phép đăng nhập Google trên tên miền riêng (Bắt buộc):**
-   - Vào **Authentication → Settings → Authorized domains** → bấm **Add domain** → thêm `meetboston.duyvo.win`.
-   - Nếu dùng Google Drive Picker trên tên miền riêng: mở **Google Cloud Console → APIs & Services → Credentials** (project `gen-lang-client-0440115237`) → mở OAuth Client ID hiện tại → thêm `https://meetboston.duyvo.win` vào **Authorized JavaScript origins**.
-2. **Bật Firebase Storage (Tuỳ chọn — để ảnh tối ưu lưu trên CDN tốc độ cao):**
-   - Vào **Storage → Get Started** (chọn chế độ Production) để kích hoạt bucket `gen-lang-client-0440115237.firebasestorage.app`.
-   - *(Nếu chưa bật ngay, hệ thống Media CMS vẫn hoạt động bình thường nhờ cơ chế tự động nén WebP dự phòng < 300KB).*
-3. **Khởi tạo dữ liệu mẫu lần đầu:**
-   - Truy cập `https://meetboston.duyvo.win/#admin`, đăng nhập bằng `duyweb5@gmail.com` → bấm **"Khởi tạo dữ liệu mẫu"** 1 lần (nếu cơ sở dữ liệu trên project mới đang trống).
+1. **Firebase Auth (`gen-lang-client-0440115237`):** Vào **Authentication → Settings → Authorized domains** → đảm bảo có `meetboston.duyvo.win`.
+2. **Google Drive OAuth (nếu dùng tải ảnh từ Drive):** Vào **Google Cloud Console → APIs & Services → Credentials** → thêm `https://meetboston.duyvo.win` vào **Authorized JavaScript origins**.
+3. **Kích hoạt YouTube WebSub:** Mở `https://meetboston.duyvo.win/admin` → **Thư viện Video & AI** → **Tự động hóa & Lịch quét** → bấm **Kích hoạt / Gia hạn WebSub** cho kênh **Lang Thang Boston**.
 
 ---
 
-## Cách kiểm tra tiến độ mỗi khi Push Code
-- Vào **Google Cloud Console → Cloud Build → History** (hoặc tab **Revisions** trong Cloud Run Service) để xem log build trực tiếp.
-- Khi có dấu tích xanh, tải lại `https://meetboston.duyvo.win` (Nginx đã cấu hình `no-cache` cho `index.html`, nên bản mới sẽ hiển thị ngay).
+## Chuyển sang tên miền mới trong tương lai (VD: `langthangbostone.com`) — Không cần sửa code
+Toàn bộ SEO động (`/sitemap.xml`, `/robots.txt`, Canonical, OpenGraph, JSON-LD) và YouTube WebSub đều đọc tên miền động. Khi đổi sang tên miền mới, chỉ cần chạy đúng 1 lệnh trên Cloud Shell:
+
+```bash
+DOMAIN="langthangbostone.com" bash scripts/setup-meetboston-cloudrun.sh
+```
+
+Sau đó thêm `langthangbostone.com` vào **Firebase Auth → Authorized domains** và bấm **Gia hạn WebSub** trong `/admin`.
+

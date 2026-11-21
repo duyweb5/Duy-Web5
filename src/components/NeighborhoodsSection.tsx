@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { Bookmark, Check, TrainFront } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Bookmark, Check, Play, TrainFront } from 'lucide-react';
 import { Language, NeighborhoodItem } from '../data/bostonData';
 import { useSiteCopy } from '../lib/I18nContext';
+import { findRelatedVideosForNeighborhood } from '../lib/searchUtils';
+import { VideoItemRecord } from '../lib/videoService';
 import { ResilientImage } from './ResilientImage';
 
 interface NeighborhoodsSectionProps {
@@ -11,6 +13,8 @@ interface NeighborhoodsSectionProps {
   onSelectId: (id: string) => void;
   savedIds: Set<string>;
   onToggleSaveNeighborhood: (nb: NeighborhoodItem) => void;
+  videos?: VideoItemRecord[];
+  onOpenVideo?: (slug: string) => void;
 }
 
 export function NeighborhoodsSection({
@@ -20,10 +24,17 @@ export function NeighborhoodsSection({
   onSelectId,
   savedIds,
   onToggleSaveNeighborhood,
+  videos = [],
+  onOpenVideo,
 }: NeighborhoodsSectionProps) {
   const t = useSiteCopy(lang).neighborhoods;
   const active = items.find((n) => n.id === selectedId) || items[0];
   const [feedback, setFeedback] = useState(false);
+
+  const relatedVideos = useMemo(
+    () => (active ? findRelatedVideosForNeighborhood(active, videos, 2) : { items: [], isDirectMatch: false }),
+    [active, videos]
+  );
 
   if (!active) return null;
 
@@ -151,6 +162,66 @@ export function NeighborhoodsSection({
                   ))}
                 </ol>
               </div>
+
+              {/* Smart Cross-Linked Videos for this Neighborhood */}
+              {relatedVideos.items.length > 0 && onOpenVideo && (
+                <div className="mt-6 border-t border-white/15 pt-5">
+                  <h4 className="text-xs font-semibold tracking-wide text-white/70">
+                    {relatedVideos.isDirectMatch
+                      ? lang === 'vi'
+                        ? `Video thực tế tại ${active.name}`
+                        : `Real-world videos in ${active.name}`
+                      : lang === 'vi'
+                        ? 'Video khám phá Boston nổi bật'
+                        : 'Featured Boston walk-through videos'}
+                  </h4>
+                  <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {relatedVideos.items.map((vid) => {
+                      const vidTitle =
+                        lang === 'vi'
+                          ? vid.titleVi || vid.rawTitle
+                          : vid.titleEn || vid.titleVi || vid.rawTitle;
+                      const slug =
+                        lang === 'vi'
+                          ? vid.slugVi || vid.id
+                          : vid.slugEn || vid.slugVi || vid.id;
+                      return (
+                        <button
+                          key={vid.id}
+                          type="button"
+                          onClick={() => onOpenVideo(slug)}
+                          className="group flex items-center gap-3 rounded-lg border border-white/15 bg-white/5 p-2 text-left transition-colors hover:border-[#FF8A9B]/60 hover:bg-white/10"
+                        >
+                          <div className="relative aspect-video w-20 shrink-0 overflow-hidden rounded bg-[#071727]">
+                            <img
+                              src={
+                                vid.thumbnail ||
+                                `https://i.ytimg.com/vi/${vid.youtubeId}/hqdefault.jpg`
+                              }
+                              alt={vidTitle}
+                              loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                              <Play className="h-3.5 w-3.5 fill-white text-white" aria-hidden="true" />
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-2 text-xs font-semibold leading-snug text-white group-hover:text-[#FF8A9B]">
+                              {vidTitle}
+                            </p>
+                            {vid.duration && (
+                              <p className="mt-0.5 font-mono text-[10px] text-white/60 tabular-nums">
+                                {vid.duration}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-4">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, Search, X } from 'lucide-react';
 import { Language } from '../data/bostonData';
 import { useSiteCopy } from '../lib/I18nContext';
 
@@ -10,6 +10,7 @@ interface NavbarProps {
   onNavigateHome?: (hash?: string) => void;
   onNavigateVideos?: () => void;
   onOpenItinerary: () => void;
+  onOpenQuickSearch?: () => void;
 }
 
 export function Navbar({
@@ -19,6 +20,7 @@ export function Navbar({
   onNavigateHome,
   onNavigateVideos,
   onOpenItinerary,
+  onOpenQuickSearch,
 }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const t = useSiteCopy(lang).nav;
@@ -28,8 +30,8 @@ export function Navbar({
     { href: '#neighborhoods', label: t.neighborhoods, isVideos: false },
     { href: '#events', label: t.events, isVideos: false },
     { href: '#stay', label: t.stay, isVideos: false },
-    { href: '/videos', label: t.videos, isVideos: true },
     { href: '#meetings', label: t.meetings, isVideos: false },
+    { href: '/videos', label: t.videos, isVideos: true },
   ];
 
   const handleLinkClick = (
@@ -50,7 +52,7 @@ export function Navbar({
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#E3E7EE] bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-8 px-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-6 px-6 lg:px-8">
         {/* Zone 1: Single text element Brand Wordmark */}
         <a
           href="#top"
@@ -89,8 +91,20 @@ export function Navbar({
           })}
         </nav>
 
-        {/* Zone 3: Single primary action CTA (desktop) + mobile menu toggle */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Zone 3: Quick Search + Primary Action CTA + Mobile Menu Toggle */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {onOpenQuickSearch && (
+            <button
+              type="button"
+              onClick={onOpenQuickSearch}
+              aria-label={lang === 'vi' ? 'Tìm kiếm toàn trang (Ctrl+K)' : 'Quick search (Ctrl+K)'}
+              title={lang === 'vi' ? 'Tìm kiếm nhanh (Ctrl+K)' : 'Quick search (Ctrl+K)'}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#E3E7EE] text-[#0A2239] transition-colors hover:border-[#0A2239]/30 hover:bg-[#F7F8FA] focus-visible:outline-2 focus-visible:outline-[#C8102E]"
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onOpenItinerary}

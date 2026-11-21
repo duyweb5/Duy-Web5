@@ -16,6 +16,7 @@ import {
   LockOpen,
   Pencil,
   Plus,
+  Radio,
   RefreshCw,
   Save,
   Search,
@@ -32,6 +33,7 @@ import {
   VideoChannelRecord,
   VideoGlossaryTermRecord,
   VideoItemRecord,
+  VideoSyncLogRecord,
   VideoTopicRecord,
   YouTubeImportPayload,
   deleteGlossaryTerm,
@@ -49,8 +51,9 @@ import {
   slugifyVideoText,
   syncImportedChannelToFirestore,
 } from '../lib/videoService';
+import { VideoAutoSyncPanel } from './VideoAutoSyncPanel';
 
-type VideoSubTab = 'videos' | 'import' | 'topics' | 'glossary';
+type VideoSubTab = 'videos' | 'import' | 'automation' | 'topics' | 'glossary';
 
 interface VideoLibraryTabProps {
   uid: string;
@@ -59,6 +62,7 @@ interface VideoLibraryTabProps {
   topics: VideoTopicRecord[];
   videos: VideoItemRecord[];
   glossary: VideoGlossaryTermRecord[];
+  syncLogs: VideoSyncLogRecord[];
   onNotice: (msg: string) => void;
   initialEditVideoId?: string | null;
   onClearInitialEdit?: () => void;
@@ -71,6 +75,7 @@ export function VideoLibraryTab({
   topics,
   videos,
   glossary,
+  syncLogs,
   onNotice,
   initialEditVideoId,
   onClearInitialEdit,
@@ -622,6 +627,12 @@ export function VideoLibraryTab({
               labelVi: 'Đồng bộ Kênh YouTube & CTA',
               labelEn: 'YouTube Sync & CTA',
               icon: Youtube,
+            },
+            {
+              id: 'automation',
+              labelVi: `Tự động hóa & Lịch quét (${syncLogs.length})`,
+              labelEn: `Auto-Sync & Logs (${syncLogs.length})`,
+              icon: Radio,
             },
             {
               id: 'topics',
@@ -1629,6 +1640,20 @@ export function VideoLibraryTab({
             </table>
           </div>
         </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SUB-TAB 5: HYBRID AUTO-SYNC (WEBSUB + CLOUD SCHEDULER) & AUDIT LOGS   */}
+      {/* ===================================================================== */}
+      {subTab === 'automation' && (
+        <VideoAutoSyncPanel
+          uid={uid}
+          adminLang={adminLang}
+          channels={channels}
+          syncLogs={syncLogs}
+          onNotice={onNotice}
+          onGoToImport={() => setSubTab('import')}
+        />
       )}
 
       {/* ===================================================================== */}

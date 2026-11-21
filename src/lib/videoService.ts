@@ -12,7 +12,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { OperationType, db, handleFirestoreError } from './firebase';
+import { OperationType, auth, db, handleFirestoreError } from './firebase';
 
 export const SAMPLE_YOUTUBE_CHANNEL_URL =
   'https://www.youtube.com/channel/UCamcyJiCcgHge0T9hW95ocA';
@@ -38,9 +38,73 @@ export interface VideoChannelRecord {
   published: boolean;
   videoCount: number;
   lastSyncedAt: string;
+  autoSyncEnabled?: boolean;
+  webSubEnabled?: boolean;
+  autoAiOptimize?: boolean;
+  autoPublishNew?: boolean;
+  webSubStatus?: 'inactive' | 'pending' | 'active' | 'error';
+  webSubSubscribedAt?: string;
+  webSubLeaseExpiresAt?: string;
+  lastAutoSyncStatus?: 'idle' | 'success' | 'partial' | 'error';
+  lastAutoSyncSummary?: string;
   createdBy?: string;
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
+}
+
+export interface VideoSyncLogRecord {
+  id: string;
+  trigger: 'cron_scheduler' | 'websub_push' | 'admin_manual';
+  status: 'success' | 'partial' | 'error';
+  channelId: string;
+  channelTitle: string;
+  videosAdded: number;
+  videosAiOptimized: number;
+  videosAiFailed: number;
+  topicsAdded: number;
+  webSubRenewed: number;
+  summary: string;
+  errorDetail: string;
+  durationMs: number;
+  createdAt?: Timestamp | null;
+}
+
+export interface ServerAutomationStatus {
+  cronSecretConfigured: boolean;
+  webSubSecretConfigured: boolean;
+  geminiConfigured: boolean;
+  youtubeApiKeyConfigured: boolean;
+  publicBaseUrl: string;
+  webSubCallbackUrl: string;
+  cronEndpointUrl: string;
+  adminSdkReady: boolean;
+  adminSdkError: string;
+}
+
+export interface ServerAutoSyncReport {
+  trigger: 'cron_scheduler' | 'websub_push' | 'admin_manual';
+  status: 'success' | 'partial' | 'error';
+  channelsScanned: number;
+  totalTopicsAdded: number;
+  totalVideosAdded: number;
+  totalVideosAiOptimized: number;
+  totalVideosAiFailed: number;
+  totalWebSubRenewed: number;
+  durationMs: number;
+  results: Array<{
+    channelId: string;
+    youtubeChannelId: string;
+    channelTitle: string;
+    topicsAdded: number;
+    videosAdded: number;
+    videosPreserved: number;
+    videosAiOptimized: number;
+    videosAiFailed: number;
+    webSubRenewed: boolean;
+    status: 'success' | 'partial' | 'error';
+    summary: string;
+    errorDetail?: string;
+  }>;
 }
 
 export interface VideoTopicRecord {
@@ -472,6 +536,25 @@ function mapChannelDoc(id: string, d: Record<string, unknown>): VideoChannelReco
     published: Boolean(d.published),
     videoCount: Number(d.videoCount || 0),
     lastSyncedAt: String(d.lastSyncedAt || ''),
+    autoSyncEnabled: d.autoSyncEnabled !== undefined ? Boolean(d.autoSyncEnabled) : true,
+    webSubEnabled: d.webSubEnabled !== undefined ? Boolean(d.webSubEnabled) : true,
+    autoAiOptimize: d.autoAiOptimize !== undefined ? Boolean(d.autoAiOptimize) : true,
+    autoPublishNew: d.autoPublishNew !== undefined ? Boolean(d.autoPublishNew) : true,
+    webSubStatus:
+      d.webSubStatus === 'active' ||
+      d.webSubStatus === 'pending' ||
+      d.webSubStatus === 'error'
+        ? d.webSubStatus
+        : 'inactive',
+    webSubSubscribedAt: String(d.webSubSubscribedAt || ''),
+    webSubLeaseExpiresAt: String(d.webSubLeaseExpiresAt || ''),
+    lastAutoSyncStatus:
+      d.lastAutoSyncStatus === 'success' ||
+      d.lastAutoSyncStatus === 'partial' ||
+      d.lastAutoSyncStatus === 'error'
+        ? d.lastAutoSyncStatus
+        : 'idle',
+    lastAutoSyncSummary: String(d.lastAutoSyncSummary || ''),
     createdBy: typeof d.createdBy === 'string' ? d.createdBy : undefined,
     createdAt: (d.createdAt as Timestamp | null) ?? null,
     updatedAt: (d.updatedAt as Timestamp | null) ?? null,
@@ -557,6 +640,32 @@ function mapGlossaryDoc(
   };
 }
 
+function mapSyncLogDoc(
+  id: string,
+  d: Record<string, unknown>
+): VideoSyncLogRecord {
+  return {
+    id,
+    trigger:
+      d.trigger === 'cron_scheduler' || d.trigger === 'websub_push'
+        ? d.trigger
+        : 'admin_manual',
+    status:
+      d.status === 'partial' || d.status === 'error' ? d.status : 'success',
+    channelId: String(d.channelId || ''),
+    channelTitle: String(d.channelTitle || ''),
+    videosAdded: Number(d.videosAdded || 0),
+    videosAiOptimized: Number(d.videosAiOptimized || 0),
+    videosAiFailed: Number(d.videosAiFailed || 0),
+    topicsAdded: Number(d.topicsAdded || 0),
+    webSubRenewed: Number(d.webSubRenewed || 0),
+    summary: String(d.summary || ''),
+    errorDetail: String(d.errorDetail || ''),
+    durationMs: Number(d.durationMs || 0),
+    createdAt: (d.createdAt as Timestamp | null) ?? null,
+  };
+}
+
 // Public real-time subscription (published channels, topics, and videos only)
 export function subscribePublicVideoLibrary(handlers: {
   onChannels: (items: VideoChannelRecord[]) => void;
@@ -614,12 +723,13 @@ export function subscribePublicVideoLibrary(handlers: {
   };
 }
 
-// Admin real-time subscription (all channels, topics, videos including drafts, and AI glossary)
+// Admin real-time subscription (all channels, topics, videos including drafts, AI glossary & sync logs)
 export function subscribeAdminVideoLibrary(handlers: {
   onChannels: (items: VideoChannelRecord[]) => void;
   onTopics: (items: VideoTopicRecord[]) => void;
   onVideos: (items: VideoItemRecord[]) => void;
   onGlossary: (items: VideoGlossaryTermRecord[]) => void;
+  onSyncLogs?: (items: VideoSyncLogRecord[]) => void;
 }): () => void {
   const unsubChannels = onSnapshot(
     collection(db, 'videoChannels'),
@@ -666,11 +776,34 @@ export function subscribeAdminVideoLibrary(handlers: {
     (err) => handleFirestoreError(err, OperationType.LIST, 'videoGlossary')
   );
 
+  const unsubSyncLogs = handlers.onSyncLogs
+    ? onSnapshot(
+        collection(db, 'videoSyncLogs'),
+        (snap) => {
+          const items = snap.docs
+            .map((d) =>
+              mapSyncLogDoc(d.id, d.data() as Record<string, unknown>)
+            )
+            .sort(
+              (a, b) =>
+                (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
+            )
+            .slice(0, 50);
+          handlers.onSyncLogs?.(items);
+        },
+        (err) => {
+          console.warn('[videoService] videoSyncLogs subscription:', err.message);
+          handlers.onSyncLogs?.([]);
+        }
+      )
+    : () => {};
+
   return () => {
     unsubChannels();
     unsubTopics();
     unsubVideos();
     unsubGlossary();
+    unsubSyncLogs();
   };
 }
 
@@ -762,6 +895,80 @@ export async function requestAiTranslateTopics(params: {
   return (json.topics || []) as TranslatedTopicAIItem[];
 }
 
+async function getAdminBearerHeader(): Promise<Record<string, string>> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Phiên đăng nhập quản trị đã hết hạn. Vui lòng đăng nhập lại.');
+  }
+  const idToken = await currentUser.getIdToken();
+  return {
+    Authorization: `Bearer ${idToken}`,
+  };
+}
+
+export async function fetchServerAutomationStatus(): Promise<ServerAutomationStatus> {
+  const authHeader = await getAdminBearerHeader();
+  const res = await fetch('/api/admin/automation/status', {
+    headers: authHeader,
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error || `Lỗi kiểm tra trạng thái server (${res.status})`);
+  }
+  return json as ServerAutomationStatus;
+}
+
+export async function triggerServerAutoSync(params?: {
+  channelId?: string;
+  forceRenewWebSub?: boolean;
+  maxAiPerRun?: number;
+}): Promise<ServerAutoSyncReport> {
+  const authHeader = await getAdminBearerHeader();
+  const res = await fetch('/api/cron/sync-youtube', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeader,
+    },
+    body: JSON.stringify(params || {}),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error || `Lỗi chạy đồng bộ tự động (${res.status})`);
+  }
+  return json as ServerAutoSyncReport;
+}
+
+export async function manageChannelWebSub(params: {
+  channelId: string;
+  youtubeChannelId: string;
+  mode: 'subscribe' | 'unsubscribe';
+  callbackBaseUrl?: string;
+}): Promise<{ ok: boolean; status: number; callbackUrl: string; topicUrl: string; message: string }> {
+  const authHeader = await getAdminBearerHeader();
+  const res = await fetch('/api/admin/websub/subscribe', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeader,
+    },
+    body: JSON.stringify(params),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json?.error || json?.message || `Lỗi đăng ký WebSub (${res.status})`);
+  }
+  return json;
+}
+
+export async function deleteVideoSyncLog(logId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'videoSyncLogs', logId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `videoSyncLogs/${logId}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Firestore Mutations (Strictly Compliant with Blueprint & Hardened Rules)
 // ---------------------------------------------------------------------------
@@ -807,6 +1014,29 @@ export async function saveVideoChannel(
       published: Boolean(data.published),
       videoCount: Math.max(0, Math.min(100000, Math.round(Number(data.videoCount) || 0))),
       lastSyncedAt: clampStr(data.lastSyncedAt, 60),
+      autoSyncEnabled:
+        data.autoSyncEnabled !== undefined ? Boolean(data.autoSyncEnabled) : true,
+      webSubEnabled:
+        data.webSubEnabled !== undefined ? Boolean(data.webSubEnabled) : true,
+      autoAiOptimize:
+        data.autoAiOptimize !== undefined ? Boolean(data.autoAiOptimize) : true,
+      autoPublishNew:
+        data.autoPublishNew !== undefined ? Boolean(data.autoPublishNew) : true,
+      webSubStatus:
+        data.webSubStatus === 'active' ||
+        data.webSubStatus === 'pending' ||
+        data.webSubStatus === 'error'
+          ? data.webSubStatus
+          : 'inactive',
+      webSubSubscribedAt: clampStr(data.webSubSubscribedAt, 60),
+      webSubLeaseExpiresAt: clampStr(data.webSubLeaseExpiresAt, 60),
+      lastAutoSyncStatus:
+        data.lastAutoSyncStatus === 'success' ||
+        data.lastAutoSyncStatus === 'partial' ||
+        data.lastAutoSyncStatus === 'error'
+          ? data.lastAutoSyncStatus
+          : 'idle',
+      lastAutoSyncSummary: clampStr(data.lastAutoSyncSummary, 400),
     };
     if (existing.exists()) {
       await updateDoc(ref, { ...base, updatedAt: serverTimestamp() });
@@ -1088,6 +1318,19 @@ export async function syncImportedChannelToFirestore(params: {
       published: prevChannel ? prevChannel.published : true,
       videoCount: payload.videos.length,
       lastSyncedAt: new Date().toISOString(),
+      autoSyncEnabled:
+        prevChannel?.autoSyncEnabled !== undefined ? prevChannel.autoSyncEnabled : true,
+      webSubEnabled:
+        prevChannel?.webSubEnabled !== undefined ? prevChannel.webSubEnabled : true,
+      autoAiOptimize:
+        prevChannel?.autoAiOptimize !== undefined ? prevChannel.autoAiOptimize : true,
+      autoPublishNew:
+        prevChannel?.autoPublishNew !== undefined ? prevChannel.autoPublishNew : true,
+      webSubStatus: prevChannel?.webSubStatus || 'inactive',
+      webSubSubscribedAt: prevChannel?.webSubSubscribedAt || '',
+      webSubLeaseExpiresAt: prevChannel?.webSubLeaseExpiresAt || '',
+      lastAutoSyncStatus: prevChannel?.lastAutoSyncStatus || 'idle',
+      lastAutoSyncSummary: prevChannel?.lastAutoSyncSummary || '',
     },
     uid
   );

@@ -91,6 +91,7 @@ import {
   VideoChannelRecord,
   VideoGlossaryTermRecord,
   VideoItemRecord,
+  VideoSyncLogRecord,
   VideoTopicRecord,
   subscribeAdminVideoLibrary,
 } from '../lib/videoService';
@@ -148,6 +149,7 @@ export function CmsAdminWorkspace({
   const [videoGlossary, setVideoGlossary] = useState<VideoGlossaryTermRecord[]>(
     []
   );
+  const [videoSyncLogs, setVideoSyncLogs] = useState<VideoSyncLogRecord[]>([]);
   const [jumpEditVideoId, setJumpEditVideoId] = useState<string | null>(null);
   const [adminLang, setAdminLang] = useState<Language>(() => {
     try {
@@ -240,6 +242,7 @@ export function CmsAdminWorkspace({
       onTopics: setVideoTopics,
       onVideos: setVideos,
       onGlossary: setVideoGlossary,
+      onSyncLogs: setVideoSyncLogs,
     });
     return () => {
       unsubCms();
@@ -2191,6 +2194,7 @@ export function CmsAdminWorkspace({
               topics={videoTopics}
               videos={videos}
               glossary={videoGlossary}
+              syncLogs={videoSyncLogs}
               onNotice={showNotice}
               initialEditVideoId={jumpEditVideoId}
               onClearInitialEdit={() => setJumpEditVideoId(null)}

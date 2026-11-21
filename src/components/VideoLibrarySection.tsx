@@ -4,22 +4,34 @@ import {
   ArrowRight,
   Bookmark,
   BookmarkCheck,
+  Building2,
   Check,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Compass,
   ExternalLink,
   Film,
   ListVideo,
+  MapPin,
   Play,
   Search,
   Share2,
   Youtube,
 } from 'lucide-react';
-import { Language } from '../data/bostonData';
+import {
+  ExperienceItem,
+  HotelItem,
+  Language,
+  NeighborhoodItem,
+} from '../data/bostonData';
 import { useSiteCopy } from '../lib/I18nContext';
+import {
+  findRelatedPlacesForVideo,
+  normalizeSearchText,
+} from '../lib/searchUtils';
 import { applyVideoSeoMetadata } from '../lib/videoSeo';
 import {
   VideoChannelRecord,
@@ -38,6 +50,12 @@ interface VideoLibrarySectionProps {
   initialSlug?: string;
   onNavigateDedicated?: (slug?: string) => void;
   onNavigateHome?: () => void;
+  neighborhoods?: NeighborhoodItem[];
+  experiences?: ExperienceItem[];
+  hotels?: HotelItem[];
+  onOpenExperience?: (item: ExperienceItem) => void;
+  onOpenHotel?: (item: HotelItem) => void;
+  onOpenNeighborhood?: (neighborhoodId: string) => void;
 }
 
 function getVideoTitle(v: VideoItemRecord, lang: Language): string {
@@ -77,6 +95,12 @@ export function VideoLibrarySection({
   initialSlug,
   onNavigateDedicated,
   onNavigateHome,
+  neighborhoods = [],
+  experiences = [],
+  hotels = [],
+  onOpenExperience,
+  onOpenHotel,
+  onOpenNeighborhood,
 }: VideoLibrarySectionProps) {
   const isVi = lang === 'vi';
   const copy = useSiteCopy(lang).videos;
@@ -114,27 +138,27 @@ export function VideoLibrarySection({
     return withVideos.length > 0 ? withVideos : topics;
   }, [topics, topicCounts]);
 
-  // Filtered playlist queue
+  // Filtered playlist queue (accent-insensitive VI/EN)
   const filteredVideos = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const qNorm = normalizeSearchText(searchQuery);
     return videos.filter((v) => {
       if (selectedTopicId !== 'all' && v.topicId !== selectedTopicId) {
         return false;
       }
-      if (!q) return true;
-      const hay = [
-        v.titleVi,
-        v.titleEn,
-        v.rawTitle,
-        v.summaryVi,
-        v.summaryEn,
-        v.channelName,
-        ...v.keywordsVi,
-        ...v.keywordsEn,
-      ]
-        .join(' ')
-        .toLowerCase();
-      return hay.includes(q);
+      if (!qNorm) return true;
+      const hay = normalizeSearchText(
+        [
+          v.titleVi,
+          v.titleEn,
+          v.rawTitle,
+          v.summaryVi,
+          v.summaryEn,
+          v.channelName,
+          ...v.keywordsVi,
+          ...v.keywordsEn,
+        ].join(' ')
+      );
+      return hay.includes(qNorm);
     });
   }, [videos, selectedTopicId, searchQuery]);
 
@@ -673,6 +697,107 @@ export function VideoLibrarySection({
                   )}
                 </div>
               </div>
+
+              {/* Smart Cross-Linking: Related Boston Places & Neighborhoods */}
+              {(() => {
+                const related = findRelatedPlacesForVideo({
+                  video: activeVideo,
+                  neighborhoods,
+                  experiences,
+                  hotels,
+                });
+                const hasAny =
+                  related.neighborhoods.length > 0 ||
+                  related.experiences.length > 0 ||
+                  related.hotels.length > 0;
+                if (!hasAny || (!onOpenNeighborhood && !onOpenExperience && !onOpenHotel)) {
+                  return null;
+                }
+                return (
+                  <div className="rounded-2xl border border-[#E3E7EE] bg-white p-5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#0A2239]">
+                        {isVi
+                          ? 'Khám phá địa điểm & khu phố liên quan'
+                          : 'Related Boston Places & Neighborhoods'}
+                      </p>
+                      <span className="text-xs text-[#526071]">
+                        {isVi ? 'Bấm để xem & thêm lịch trình' : 'Explore & add to trip'}
+                      </span>
+                    </div>
+                    <div className="mt-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                      {related.neighborhoods.map((nb) =>
+                        onOpenNeighborhood ? (
+                          <button
+                            key={`nb-${nb.id}`}
+                            type="button"
+                            onClick={() => onOpenNeighborhood(nb.id)}
+                            className="flex items-center gap-3 rounded-xl border border-[#E3E7EE] bg-[#F7F8FA] p-3 text-left transition-colors hover:border-[#C8102E] hover:bg-white"
+                          >
+                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0A2239] text-white">
+                              <MapPin className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold text-[#0A2239]">
+                                {nb.name}
+                              </p>
+                              <p className="truncate text-[11px] text-[#526071]">
+                                {nb.vibe[lang]}
+                              </p>
+                            </div>
+                          </button>
+                        ) : null
+                      )}
+
+                      {related.experiences.map((exp) =>
+                        onOpenExperience ? (
+                          <button
+                            key={`exp-${exp.id}`}
+                            type="button"
+                            onClick={() => onOpenExperience(exp)}
+                            className="flex items-center gap-3 rounded-xl border border-[#E3E7EE] bg-[#F7F8FA] p-3 text-left transition-colors hover:border-[#C8102E] hover:bg-white"
+                          >
+                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#C8102E] text-white">
+                              <Compass className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold text-[#0A2239]">
+                                {exp.title[lang]}
+                              </p>
+                              <p className="truncate text-[11px] text-[#526071]">
+                                {exp.district}
+                              </p>
+                            </div>
+                          </button>
+                        ) : null
+                      )}
+
+                      {related.hotels.map((htl) =>
+                        onOpenHotel ? (
+                          <button
+                            key={`htl-${htl.id}`}
+                            type="button"
+                            onClick={() => onOpenHotel(htl)}
+                            className="flex items-center gap-3 rounded-xl border border-[#E3E7EE] bg-[#F7F8FA] p-3 text-left transition-colors hover:border-[#C8102E] hover:bg-white"
+                          >
+                            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#143757] text-white">
+                              <Building2 className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold text-[#0A2239]">
+                                {htl.name}
+                              </p>
+                              <p className="truncate text-[11px] text-[#526071]">
+                                {htl.district} · ${htl.rateUsd}
+                              </p>
+                            </div>
+                          </button>
+                        ) : null
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Customizable Bilingual CTA Block below Player (Admin-managed per channel) */}
               {activeChannel?.ctaEnabled &&

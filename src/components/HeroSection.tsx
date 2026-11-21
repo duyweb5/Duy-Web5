@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, Search, X } from 'lucide-react';
+import { ArrowRight, Play, Search, X } from 'lucide-react';
 import {
   EventItem,
   ExperienceItem,
@@ -9,15 +9,14 @@ import {
 } from '../data/bostonData';
 import { useI18nConfig, useSiteCopy } from '../lib/I18nContext';
 import { SiteConfigData } from '../lib/cmsService';
+import {
+  UnifiedSearchHit,
+  buildUnifiedSearchHits,
+} from '../lib/searchUtils';
+import { VideoItemRecord, VideoTopicRecord } from '../lib/videoService';
 import { ResilientImage } from './ResilientImage';
 
-export interface SearchHit {
-  id: string;
-  kind: 'experience' | 'event' | 'hotel' | 'neighborhood';
-  title: string;
-  meta: string;
-  href: string;
-}
+export type SearchHit = UnifiedSearchHit;
 
 interface HeroSectionProps {
   lang: Language;
@@ -26,6 +25,8 @@ interface HeroSectionProps {
   neighborhoods: NeighborhoodItem[];
   events: EventItem[];
   hotels: HotelItem[];
+  videos?: VideoItemRecord[];
+  videoTopics?: VideoTopicRecord[];
   onChangeLang: (lang: Language) => void;
   onSelectSearchHit: (hit: SearchHit) => void;
 }
@@ -37,13 +38,15 @@ export function HeroSection({
   neighborhoods,
   events,
   hotels,
+  videos = [],
+  videoTopics = [],
   onChangeLang,
   onSelectSearchHit,
 }: HeroSectionProps) {
   const t = useSiteCopy(lang).hero;
   const i18nConfig = useI18nConfig();
   const [query, setQuery] = useState('');
-  const [scope, setScope] = useState<'all' | 'experience' | 'event' | 'hotel'>('all');
+  const [scope, setScope] = useState<'all' | 'experience' | 'event' | 'hotel' | 'video'>('all');
   const [isFocused, setIsFocused] = useState(false);
 
   const kickerText = lang === 'vi' ? siteConfig.kickerVi : siteConfig.kickerEn;
@@ -52,71 +55,22 @@ export function HeroSection({
   const subheadText =
     lang === 'vi' ? siteConfig.subheadVi : siteConfig.subheadEn;
 
-  const searchHits = useMemo<SearchHit[]>(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-
-    const hits: SearchHit[] = [];
-
-    if (scope === 'all' || scope === 'experience') {
-      for (const exp of experiences) {
-        const hay = `${exp.title[lang]} ${exp.summary[lang]} ${exp.district}`.toLowerCase();
-        if (hay.includes(q)) {
-          hits.push({
-            id: exp.id,
-            kind: 'experience',
-            title: exp.title[lang],
-            meta: `${exp.district} · ${exp.duration[lang]}`,
-            href: '#explore',
-          });
-        }
-      }
-      for (const nb of neighborhoods) {
-        const hay = `${nb.name} ${nb.tagline[lang]} ${nb.description[lang]}`.toLowerCase();
-        if (hay.includes(q)) {
-          hits.push({
-            id: nb.id,
-            kind: 'neighborhood',
-            title: nb.name,
-            meta: `${nb.vibe[lang]}`,
-            href: '#neighborhoods',
-          });
-        }
-      }
-    }
-
-    if (scope === 'all' || scope === 'event') {
-      for (const evt of events) {
-        const hay = `${evt.title[lang]} ${evt.venue} ${evt.district}`.toLowerCase();
-        if (hay.includes(q)) {
-          hits.push({
-            id: evt.id,
-            kind: 'event',
-            title: evt.title[lang],
-            meta: `${evt.fullDate[lang]} · ${evt.district}`,
-            href: '#events',
-          });
-        }
-      }
-    }
-
-    if (scope === 'all' || scope === 'hotel') {
-      for (const htl of hotels) {
-        const hay = `${htl.name} ${htl.district} ${htl.style[lang]}`.toLowerCase();
-        if (hay.includes(q)) {
-          hits.push({
-            id: htl.id,
-            kind: 'hotel',
-            title: htl.name,
-            meta: `${htl.district} · $${htl.rateUsd}`,
-            href: '#stay',
-          });
-        }
-      }
-    }
-
-    return hits.slice(0, 6);
-  }, [query, scope, lang, experiences, neighborhoods, events, hotels]);
+  const searchHits = useMemo<SearchHit[]>(
+    () =>
+      buildUnifiedSearchHits({
+        query,
+        scope,
+        lang,
+        experiences,
+        neighborhoods,
+        events,
+        hotels,
+        videos,
+        topics: videoTopics,
+        limit: 7,
+      }),
+    [query, scope, lang, experiences, neighborhoods, events, hotels, videos, videoTopics]
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +79,13 @@ export function HeroSection({
       setIsFocused(false);
     } else {
       const target =
-        scope === 'event' ? '#events' : scope === 'hotel' ? '#stay' : '#explore';
+        scope === 'event'
+          ? '#events'
+          : scope === 'hotel'
+            ? '#stay'
+            : scope === 'video'
+              ? '#videos'
+              : '#explore';
       document.querySelector(target)?.scrollIntoView({ behavior: 'smooth' });
     }
   };
@@ -242,7 +202,12 @@ export function HeroSection({
                     value={scope}
                     onChange={(e) =>
                       setScope(
-                        e.target.value as 'all' | 'experience' | 'event' | 'hotel'
+                        e.target.value as
+                          | 'all'
+                          | 'experience'
+                          | 'event'
+                          | 'hotel'
+                          | 'video'
                       )
                     }
                     aria-label="Category filter"
@@ -252,6 +217,7 @@ export function HeroSection({
                     <option value="experience">{t.searchExplore}</option>
                     <option value="event">{t.searchEvents}</option>
                     <option value="hotel">{t.searchStay}</option>
+                    <option value="video">Video</option>
                   </select>
 
                   <button
@@ -278,15 +244,22 @@ export function HeroSection({
                               setIsFocused(false);
                               setQuery('');
                             }}
-                            className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition-colors hover:bg-[#F7F8FA]"
+                            className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-[#F7F8FA]"
                           >
-                            <div className="min-w-0">
-                              <p className="truncate font-display text-sm font-bold text-[#0F1B2B]">
-                                {hit.title}
-                              </p>
-                              <p className="mt-0.5 truncate text-xs text-[#526071]">
-                                {hit.meta}
-                              </p>
+                            <div className="flex min-w-0 items-center gap-3">
+                              {hit.kind === 'video' && (
+                                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#FFF5F6] text-[#C8102E]">
+                                  <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                                </span>
+                              )}
+                              <div className="min-w-0">
+                                <p className="truncate font-display text-sm font-bold text-[#0F1B2B]">
+                                  {hit.title}
+                                </p>
+                                <p className="mt-0.5 truncate text-xs text-[#526071]">
+                                  {hit.meta}
+                                </p>
+                              </div>
                             </div>
                             <ArrowRight
                               className="h-4 w-4 shrink-0 text-[#C8102E]"

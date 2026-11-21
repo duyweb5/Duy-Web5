@@ -418,6 +418,15 @@
         "published": { "type": "boolean" },
         "videoCount": { "type": "number" },
         "lastSyncedAt": { "type": "string", "minLength": 0, "maxLength": 60 },
+        "autoSyncEnabled": { "type": "boolean" },
+        "webSubEnabled": { "type": "boolean" },
+        "autoAiOptimize": { "type": "boolean" },
+        "autoPublishNew": { "type": "boolean" },
+        "webSubStatus": { "type": "string", "enum": ["inactive", "pending", "active", "error"] },
+        "webSubSubscribedAt": { "type": "string", "minLength": 0, "maxLength": 60 },
+        "webSubLeaseExpiresAt": { "type": "string", "minLength": 0, "maxLength": 60 },
+        "lastAutoSyncStatus": { "type": "string", "enum": ["idle", "success", "partial", "error"] },
+        "lastAutoSyncSummary": { "type": "string", "minLength": 0, "maxLength": 400 },
         "createdBy": { "type": "string", "minLength": 1, "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
@@ -583,6 +592,41 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "VideoSyncLog": {
+      "title": "VideoSyncLog",
+      "description": "Server-generated execution audit log for Cloud Scheduler cron jobs and real-time YouTube WebSub pushes.",
+      "type": "object",
+      "properties": {
+        "trigger": { "type": "string", "enum": ["cron_scheduler", "websub_push", "admin_manual"] },
+        "status": { "type": "string", "enum": ["success", "partial", "error"] },
+        "channelId": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "channelTitle": { "type": "string", "minLength": 0, "maxLength": 160 },
+        "videosAdded": { "type": "number" },
+        "videosAiOptimized": { "type": "number" },
+        "videosAiFailed": { "type": "number" },
+        "topicsAdded": { "type": "number" },
+        "webSubRenewed": { "type": "number" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "errorDetail": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "durationMs": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "trigger",
+        "status",
+        "channelId",
+        "channelTitle",
+        "videosAdded",
+        "videosAiOptimized",
+        "videosAiFailed",
+        "topicsAdded",
+        "webSubRenewed",
+        "summary",
+        "errorDetail",
+        "durationMs",
+        "createdAt"
+      ]
     }
   },
   "firestore": {
@@ -632,7 +676,7 @@
     },
     "/videoChannels/{channelId}": {
       "schema": { "$ref": "#/entities/VideoChannel" },
-      "description": "Connected YouTube channels and bilingual player CTA configuration."
+      "description": "Connected YouTube channels, bilingual player CTA configuration, and Hybrid Auto-Sync / WebSub settings."
     },
     "/videoTopics/{topicId}": {
       "schema": { "$ref": "#/entities/VideoTopic" },
@@ -645,6 +689,10 @@
     "/videoGlossary/{termId}": {
       "schema": { "$ref": "#/entities/VideoGlossaryTerm" },
       "description": "Admin-curated AI translation memory glossary terms for consistent bilingual video editing."
+    },
+    "/videoSyncLogs/{logId}": {
+      "schema": { "$ref": "#/entities/VideoSyncLog" },
+      "description": "Server-only audit log of automated Cloud Scheduler and YouTube WebSub sync runs (admin read/delete only)."
     }
   }
 }

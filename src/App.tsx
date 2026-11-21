@@ -52,6 +52,7 @@ import { ItineraryDrawer } from './components/ItineraryDrawer';
 import { MeetingsModal } from './components/MeetingsModal';
 import { Navbar } from './components/Navbar';
 import { NeighborhoodsSection } from './components/NeighborhoodsSection';
+import { QuickSearchModal } from './components/QuickSearchModal';
 import { StayAndPlanSection } from './components/StayAndPlanSection';
 import { VideoLibrarySection } from './components/VideoLibrarySection';
 
@@ -219,6 +220,20 @@ function MeetBostonApp() {
   const [detailTarget, setDetailTarget] = useState<DetailModalTarget>(null);
   const [itineraryOpen, setItineraryOpen] = useState(false);
   const [meetingsOpen, setMeetingsOpen] = useState(false);
+  const [quickSearchOpen, setQuickSearchOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K quick search shortcut on public views
+  useEffect(() => {
+    if (route.view === 'admin') return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setQuickSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [route.view]);
 
   // Sync browser URL & hash navigation (/admin, /videos, /videos/:slug, #video/:slug)
   useEffect(() => {
@@ -452,6 +467,17 @@ function MeetBostonApp() {
     });
   };
 
+  const handleOpenNeighborhood = (neighborhoodId: string) => {
+    setSelectedNeighborhoodId(neighborhoodId);
+    if (route.view === 'videos') {
+      navigateToHome('#neighborhoods');
+    } else {
+      document
+        .querySelector('#neighborhoods')
+        ?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const handleSelectSearchHit = (hit: SearchHit) => {
     if (hit.kind === 'experience') {
       const exp = experiences.find((e) => e.id === hit.id);
@@ -463,10 +489,9 @@ function MeetBostonApp() {
       const htl = hotels.find((h) => h.id === hit.id);
       if (htl) setDetailTarget({ kind: 'hotel', item: htl });
     } else if (hit.kind === 'neighborhood') {
-      setSelectedNeighborhoodId(hit.id);
-      document
-        .querySelector('#neighborhoods')
-        ?.scrollIntoView({ behavior: 'smooth' });
+      handleOpenNeighborhood(hit.id);
+    } else if (hit.kind === 'video') {
+      navigateToVideosPage(hit.slug || hit.id);
     }
   };
 
@@ -503,6 +528,7 @@ function MeetBostonApp() {
           onNavigateHome={navigateToHome}
           onNavigateVideos={() => navigateToVideosPage()}
           onOpenItinerary={() => setItineraryOpen(true)}
+          onOpenQuickSearch={() => setQuickSearchOpen(true)}
         />
 
         {isVideosPage ? (
@@ -554,6 +580,14 @@ function MeetBostonApp() {
               isDedicatedPage
               initialSlug={route.videoSlug}
               onNavigateHome={() => navigateToHome()}
+              neighborhoods={neighborhoods}
+              experiences={experiences}
+              hotels={hotels}
+              onOpenExperience={(item) =>
+                setDetailTarget({ kind: 'experience', item })
+              }
+              onOpenHotel={(item) => setDetailTarget({ kind: 'hotel', item })}
+              onOpenNeighborhood={handleOpenNeighborhood}
             />
           </main>
         ) : (
@@ -565,6 +599,8 @@ function MeetBostonApp() {
               neighborhoods={neighborhoods}
               events={events}
               hotels={hotels}
+              videos={videos}
+              videoTopics={videoTopics}
               onChangeLang={handlePublicChangeLang}
               onSelectSearchHit={handleSelectSearchHit}
             />
@@ -589,6 +625,8 @@ function MeetBostonApp() {
                 onSelectId={setSelectedNeighborhoodId}
                 savedIds={savedIds}
                 onToggleSaveNeighborhood={handleToggleNeighborhood}
+                videos={videos}
+                onOpenVideo={(slug) => navigateToVideosPage(slug)}
               />
             )}
 
@@ -626,6 +664,14 @@ function MeetBostonApp() {
               savedIds={savedIds}
               onToggleSaveVideo={handleToggleVideo}
               onNavigateDedicated={navigateToVideosPage}
+              neighborhoods={neighborhoods}
+              experiences={experiences}
+              hotels={hotels}
+              onOpenExperience={(item) =>
+                setDetailTarget({ kind: 'experience', item })
+              }
+              onOpenHotel={(item) => setDetailTarget({ kind: 'hotel', item })}
+              onOpenNeighborhood={handleOpenNeighborhood}
             />
           </main>
         )}
@@ -662,6 +708,19 @@ function MeetBostonApp() {
           lang={lang}
           open={meetingsOpen}
           onClose={() => setMeetingsOpen(false)}
+        />
+
+        <QuickSearchModal
+          lang={lang}
+          open={quickSearchOpen}
+          experiences={experiences}
+          neighborhoods={neighborhoods}
+          events={events}
+          hotels={hotels}
+          videos={videos}
+          topics={videoTopics}
+          onClose={() => setQuickSearchOpen(false)}
+          onSelectHit={handleSelectSearchHit}
         />
       </div>
     </I18nProvider>
