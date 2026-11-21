@@ -52,15 +52,22 @@ import { ItineraryDrawer } from './components/ItineraryDrawer';
 import { MeetingsModal } from './components/MeetingsModal';
 import { Navbar } from './components/Navbar';
 import { NeighborhoodsSection } from './components/NeighborhoodsSection';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { QuickSearchModal } from './components/QuickSearchModal';
+import { SharedTripBanner } from './components/SharedTripBanner';
 import { StayAndPlanSection } from './components/StayAndPlanSection';
 import { VideoLibrarySection } from './components/VideoLibrarySection';
+import {
+  SharedItineraryRecord,
+  loadSharedItinerary,
+} from './lib/itineraryService';
 
 const STORAGE_KEY = 'meet-boston-itinerary-v1';
 
 type AppRouteState = {
   view: 'public' | 'videos' | 'admin';
   videoSlug?: string;
+  tripShareId?: string;
 };
 
 function resolveLocationRoute(): AppRouteState {
@@ -78,6 +85,12 @@ function resolveLocationRoute(): AppRouteState {
     return {
       view: 'videos',
       videoSlug: decodeURIComponent(path.slice('/videos/'.length)),
+    };
+  }
+  if (lowerPath.startsWith('/trip/')) {
+    return {
+      view: 'public',
+      tripShareId: decodeURIComponent(path.slice('/trip/'.length)),
     };
   }
   if (hash.startsWith('#video/')) {
@@ -221,6 +234,27 @@ function MeetBostonApp() {
   const [itineraryOpen, setItineraryOpen] = useState(false);
   const [meetingsOpen, setMeetingsOpen] = useState(false);
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
+  const [sharedTrip, setSharedTrip] = useState<SharedItineraryRecord | null>(null);
+  const [sharedTripImported, setSharedTripImported] = useState(false);
+
+  // Load shared itinerary snapshot when visiting /trip/:shareId
+  useEffect(() => {
+    if (!route.tripShareId) return;
+    let active = true;
+    loadSharedItinerary(route.tripShareId)
+      .then((record) => {
+        if (active && record) {
+          setSharedTrip(record);
+          setSharedTripImported(false);
+        }
+      })
+      .catch(() => {
+        // Ignore invalid/unreachable shared trip IDs cleanly
+      });
+    return () => {
+      active = false;
+    };
+  }, [route.tripShareId]);
 
   // Global Ctrl+K / Cmd+K quick search shortcut on public views
   useEffect(() => {
@@ -531,6 +565,26 @@ function MeetBostonApp() {
           onOpenQuickSearch={() => setQuickSearchOpen(true)}
         />
 
+        {sharedTrip && (
+          <SharedTripBanner
+            lang={lang}
+            trip={sharedTrip}
+            imported={sharedTripImported}
+            onImportTrip={() => {
+              setSavedItems(sharedTrip.items);
+              setSharedTripImported(true);
+              setItineraryOpen(true);
+            }}
+            onOpenDrawer={() => setItineraryOpen(true)}
+            onDismiss={() => {
+              setSharedTrip(null);
+              if (window.location.pathname.toLowerCase().startsWith('/trip/')) {
+                window.history.replaceState(null, '', '/');
+              }
+            }}
+          />
+        )}
+
         {isVideosPage ? (
           <main>
             {/* Compact Language Switcher Bar on Dedicated /videos Page */}
@@ -722,6 +776,8 @@ function MeetBostonApp() {
           onClose={() => setQuickSearchOpen(false)}
           onSelectHit={handleSelectSearchHit}
         />
+
+        <OfflineIndicator lang={lang} />
       </div>
     </I18nProvider>
   );

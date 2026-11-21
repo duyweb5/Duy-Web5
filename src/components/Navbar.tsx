@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Menu, Search, X } from 'lucide-react';
 import { Language } from '../data/bostonData';
 import { useSiteCopy } from '../lib/I18nContext';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavbarProps {
   lang: Language;
@@ -91,7 +92,7 @@ export function Navbar({
           })}
         </nav>
 
-        {/* Zone 3: Quick Search + Primary Action CTA + Mobile Menu Toggle */}
+        {/* Zone 3: Quick Search + PWA Install + Primary Action CTA + Mobile Menu Toggle */}
         <div className="flex items-center gap-2.5 shrink-0">
           {onOpenQuickSearch && (
             <button
@@ -104,6 +105,8 @@ export function Navbar({
               <Search className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
+
+          <PWAInstallButton lang={lang} variant="navbar" />
 
           <button
             type="button"

@@ -627,6 +627,35 @@
         "durationMs",
         "createdAt"
       ]
+    },
+    "SharedItinerary": {
+      "title": "SharedItinerary",
+      "description": "Publicly shareable, immutable 3-day Boston trip itinerary snapshot accessible via /trip/{shareId}.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "lang": { "type": "string", "enum": ["vi", "en"] },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "type": { "type": "string", "enum": ["experience", "neighborhood", "event", "hotel", "video"] },
+              "day": { "type": "number" },
+              "titleVi": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "titleEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "subtitleVi": { "type": "string", "minLength": 0, "maxLength": 160 },
+              "subtitleEn": { "type": "string", "minLength": 0, "maxLength": 160 },
+              "district": { "type": "string", "minLength": 1, "maxLength": 120 },
+              "image": { "type": "string", "minLength": 0, "maxLength": 1000 }
+            },
+            "required": ["id", "type", "day", "titleVi", "titleEn", "subtitleVi", "subtitleEn", "district", "image"]
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "lang", "items", "createdAt"]
     }
   },
   "firestore": {
@@ -693,6 +722,10 @@
     "/videoSyncLogs/{logId}": {
       "schema": { "$ref": "#/entities/VideoSyncLog" },
       "description": "Server-only audit log of automated Cloud Scheduler and YouTube WebSub sync runs (admin read/delete only)."
+    },
+    "/sharedItineraries/{shareId}": {
+      "schema": { "$ref": "#/entities/SharedItinerary" },
+      "description": "Immutable publicly shareable Boston 3-day trip snapshots accessed via /trip/{shareId}."
     }
   }
 }

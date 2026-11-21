@@ -345,7 +345,12 @@ export async function injectDynamicSeoHtml(
     },
   ];
 
-  if (lowerPath === '/videos') {
+  if (lowerPath.startsWith('/trip/')) {
+    pageTitle = `Lịch trình Du lịch Boston được chia sẻ — ${snapshot.siteName}`;
+    pageDesc =
+      'Xem lịch trình khám phá Boston theo từng ngày, mở tuyến đường Google Maps, xuất lịch .ics hoặc lưu bản sao để tuỳ chỉnh.';
+    canonicalUrl = `${baseUrl}${reqPath}`;
+  } else if (lowerPath === '/videos') {
     pageTitle = `Thư viện Video Du lịch Boston — ${snapshot.siteName}`;
     pageDesc =
       'Khám phá Boston qua thư viện video YouTube thực tế, phân loại theo chủ đề và tối ưu song ngữ Việt – Anh.';

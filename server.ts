@@ -34,6 +34,7 @@ import {
   injectDynamicSeoHtml,
   resolveCanonicalBaseUrl,
 } from './server/seoService.js';
+import { getLiveBostonWeather } from './server/bostonWeatherService.js';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -86,6 +87,18 @@ async function startServer() {
     } catch (err) {
       console.error('[Sitemap] Generation failed:', err);
       res.status(500).send('Unable to generate sitemap');
+    }
+  });
+
+  // Live Boston Weather & 3-day Forecast (15-min cached Open-Meteo proxy, zero API key)
+  app.get('/api/boston/weather', async (_req, res) => {
+    try {
+      const payload = await getLiveBostonWeather();
+      res.setHeader('Cache-Control', 'public, max-age=600');
+      res.json(payload);
+    } catch (err) {
+      console.error('[Weather] Live Boston weather fetch failed:', err);
+      res.status(502).json({ error: 'Unable to fetch live Boston weather.' });
     }
   });
 
@@ -488,11 +501,24 @@ async function startServer() {
       })
     );
 
-    // Static public files & copied /src/assets/images
+    // Static public files & copied /src/assets/images (no-cache for PWA service worker & manifest)
     app.use(
       express.static(distDir, {
         maxAge: '1d',
         index: false,
+        setHeaders: (res, filePath) => {
+          const base = path.basename(filePath);
+          if (
+            base === 'sw.js' ||
+            base === 'registerSW.js' ||
+            base === 'manifest.webmanifest'
+          ) {
+            res.setHeader(
+              'Cache-Control',
+              'no-store, no-cache, must-revalidate, proxy-revalidate'
+            );
+          }
+        },
       })
     );
 

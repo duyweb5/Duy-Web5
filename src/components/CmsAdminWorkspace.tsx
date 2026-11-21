@@ -95,6 +95,11 @@ import {
   VideoTopicRecord,
   subscribeAdminVideoLibrary,
 } from '../lib/videoService';
+import {
+  SharedItineraryAdminItem,
+  subscribeSharedItineraries,
+} from '../lib/itineraryService';
+import { AdminAnalyticsPanel } from './AdminAnalyticsPanel';
 
 const ADMIN_LANG_STORAGE_KEY = 'meet-boston-admin-lang-v1';
 
@@ -150,6 +155,9 @@ export function CmsAdminWorkspace({
     []
   );
   const [videoSyncLogs, setVideoSyncLogs] = useState<VideoSyncLogRecord[]>([]);
+  const [sharedItineraries, setSharedItineraries] = useState<
+    SharedItineraryAdminItem[]
+  >([]);
   const [jumpEditVideoId, setJumpEditVideoId] = useState<string | null>(null);
   const [adminLang, setAdminLang] = useState<Language>(() => {
     try {
@@ -244,12 +252,14 @@ export function CmsAdminWorkspace({
       onGlossary: setVideoGlossary,
       onSyncLogs: setVideoSyncLogs,
     });
+    const unsubSharedTrips = subscribeSharedItineraries(setSharedItineraries);
     return () => {
       unsubCms();
       unsubMedia();
       unsubI18n();
       unsubTranslations();
       unsubVideos();
+      unsubSharedTrips();
     };
   }, [authReady, user, isAdmin]);
 
@@ -1053,6 +1063,21 @@ export function CmsAdminWorkspace({
                   </div>
                 </div>
               </div>
+
+              {/* Analytics, CSV Export, Shared Trips & Domain/SEO/PWA Readiness */}
+              <AdminAnalyticsPanel
+                adminLang={adminLang}
+                videos={videos}
+                videoChannels={videoChannels}
+                videoSyncLogs={videoSyncLogs}
+                guideLeads={guideLeads}
+                meetingRfps={meetingRfps}
+                sharedItineraries={sharedItineraries}
+                canDeleteSharedTrips={canDeleteMedia}
+                onJumpToVideos={() => setActiveTab('videos')}
+                onJumpToLeads={() => setActiveTab('leads')}
+                onNotice={showNotice}
+              />
             </div>
           )}
 

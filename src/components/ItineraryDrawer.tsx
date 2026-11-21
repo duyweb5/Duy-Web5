@@ -1,7 +1,25 @@
 import { useEffect, useState } from 'react';
-import { Check, Copy, Trash2, X } from 'lucide-react';
+import {
+  CalendarPlus,
+  Check,
+  Copy,
+  ExternalLink,
+  Link2,
+  Loader2,
+  MapPin,
+  Printer,
+  Share2,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { Language, SavedItineraryItem } from '../data/bostonData';
 import { useSiteCopy } from '../lib/I18nContext';
+import {
+  buildGoogleMapsDayRouteUrl,
+  createSharedItinerary,
+  downloadItineraryIcs,
+  printItineraryPdf,
+} from '../lib/itineraryService';
 import { ResilientImage } from './ResilientImage';
 
 interface ItineraryDrawerProps {
@@ -25,9 +43,21 @@ export function ItineraryDrawer({
   onClearAll,
   onLoadStarter,
 }: ItineraryDrawerProps) {
+  const isVi = lang === 'vi';
   const siteCopy = useSiteCopy(lang);
   const t = siteCopy.drawer;
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareCopied, setShareCopied] = useState(false);
+  const [shareError, setShareError] = useState('');
+
+  // Reset generated share link whenever the itinerary items change
+  useEffect(() => {
+    setShareUrl('');
+    setShareCopied(false);
+    setShareError('');
+  }, [items]);
 
   useEffect(() => {
     if (!open) return;
@@ -44,7 +74,7 @@ export function ItineraryDrawer({
 
   const handleCopy = async () => {
     const lines: string[] = [
-      lang === 'vi' ? 'LỊCH TRÌNH DU LỊCH BOSTON (MEET BOSTON)' : 'MY BOSTON ITINERARY (MEET BOSTON)',
+      isVi ? 'LỊCH TRÌNH DU LỊCH BOSTON (MEET BOSTON)' : 'MY BOSTON ITINERARY (MEET BOSTON)',
       '',
     ];
     for (const day of days) {
@@ -56,6 +86,9 @@ export function ItineraryDrawer({
       }
       lines.push('');
     }
+    if (shareUrl) {
+      lines.push(`${isVi ? 'Link chia sẻ' : 'Share link'}: ${shareUrl}`);
+    }
     try {
       await navigator.clipboard.writeText(lines.join('\n'));
       setCopied(true);
@@ -63,6 +96,43 @@ export function ItineraryDrawer({
     } catch {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2200);
+    }
+  };
+
+  const handleCreateShareLink = async () => {
+    if (!items.length || sharing) return;
+    setSharing(true);
+    setShareError('');
+    try {
+      const res = await createSharedItinerary({ items, lang });
+      setShareUrl(res.shareUrl);
+      try {
+        await navigator.clipboard.writeText(res.shareUrl);
+        setShareCopied(true);
+        window.setTimeout(() => setShareCopied(false), 2600);
+      } catch {
+        // Still display the link for manual copy
+      }
+    } catch {
+      setShareError(
+        isVi
+          ? 'Không thể tạo liên kết chia sẻ lúc này. Vui lòng thử lại.'
+          : 'Could not generate a share link right now. Please try again.'
+      );
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleCopyShareUrl = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2200);
+    } catch {
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2200);
     }
   };
 
@@ -126,15 +196,30 @@ export function ItineraryDrawer({
               {days.map((day) => {
                 const dayItems = items.filter((item) => item.day === day);
                 if (dayItems.length === 0) return null;
+                const mapsRouteUrl = buildGoogleMapsDayRouteUrl(dayItems, lang);
+
                 return (
                   <div key={day}>
-                    <div className="flex items-center justify-between border-b border-[#E3E7EE] pb-2">
-                      <h3 className="font-display text-sm font-bold text-[#0A2239]">
-                        {t.dayPrefix} {day}
-                      </h3>
-                      <span className="font-mono text-xs text-[#526071] tabular-nums">
-                        {dayItems.length}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 border-b border-[#E3E7EE] pb-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-display text-sm font-bold text-[#0A2239]">
+                          {t.dayPrefix} {day}
+                        </h3>
+                        <span className="font-mono text-xs text-[#526071] tabular-nums">
+                          ({dayItems.length})
+                        </span>
+                      </div>
+
+                      <a
+                        href={mapsRouteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border border-[#E3E7EE] bg-[#F7F8FA] px-2.5 py-1 text-[11px] font-semibold text-[#0A2239] transition-colors hover:border-[#C8102E] hover:text-[#C8102E]"
+                      >
+                        <MapPin className="h-3 w-3" aria-hidden="true" />
+                        <span>{isVi ? 'Lộ trình Maps' : 'Maps Route'}</span>
+                        <ExternalLink className="h-2.5 w-2.5 opacity-70" aria-hidden="true" />
+                      </a>
                     </div>
 
                     <ul className="mt-3 space-y-3">
@@ -194,33 +279,114 @@ export function ItineraryDrawer({
                   </div>
                 );
               })}
+
+              {/* Generated Shareable Link Box */}
+              {shareUrl && (
+                <div className="rounded-xl border border-emerald-700/20 bg-emerald-50 p-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                      <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      {isVi ? 'Đã tạo link chia sẻ công khai' : 'Shareable trip link ready'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyShareUrl}
+                      className="inline-flex items-center gap-1 rounded-md bg-emerald-700 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-800"
+                    >
+                      {shareCopied ? (
+                        <Check className="h-3 w-3" aria-hidden="true" />
+                      ) : (
+                        <Copy className="h-3 w-3" aria-hidden="true" />
+                      )}
+                      <span>{shareCopied ? (isVi ? 'Đã chép' : 'Copied') : isVi ? 'Chép link' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <p className="mt-1.5 break-all font-mono text-[11px] text-emerald-950">
+                    {shareUrl}
+                  </p>
+                </div>
+              )}
+
+              {shareError && (
+                <p role="alert" className="text-xs font-semibold text-[#C8102E]">
+                  {shareError}
+                </p>
+              )}
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
         {items.length > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-[#E3E7EE] bg-[#F7F8FA] px-6 py-4">
-            <button
-              type="button"
-              onClick={onClearAll}
-              className="min-h-[40px] px-2 text-xs font-semibold text-[#526071] transition-colors hover:text-[#C8102E]"
-            >
-              {t.clearAll}
-            </button>
+          <div className="space-y-2.5 border-t border-[#E3E7EE] bg-[#F7F8FA] px-6 py-4">
+            {/* Primary Share + Copy Row */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCreateShareLink}
+                disabled={sharing}
+                className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-lg bg-[#C8102E] px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#A10C24] disabled:opacity-60 whitespace-nowrap"
+              >
+                {sharing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Share2 className="h-4 w-4" aria-hidden="true" />
+                )}
+                <span>
+                  {sharing
+                    ? isVi
+                      ? 'Đang tạo link...'
+                      : 'Creating link...'
+                    : isVi
+                      ? 'Tạo link chia sẻ'
+                      : 'Share Trip Link'}
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="inline-flex min-h-[42px] items-center gap-2 rounded-lg bg-[#0A2239] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#133454] whitespace-nowrap shrink-0"
-            >
-              {copied ? (
-                <Check className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Copy className="h-4 w-4" aria-hidden="true" />
-              )}
-              <span>{copied ? t.copiedBtn : t.copyBtn}</span>
-            </button>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-lg bg-[#0A2239] px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#133454] whitespace-nowrap shrink-0"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                )}
+                <span>{copied ? t.copiedBtn : isVi ? 'Chép chữ' : 'Copy Text'}</span>
+              </button>
+            </div>
+
+            {/* Secondary Export Row: PDF, .ics Calendar, Clear */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => printItineraryPdf(items, lang, shareUrl || undefined)}
+                  className="inline-flex min-h-[34px] items-center gap-1.5 rounded-md border border-[#D4DBE5] bg-white px-2.5 py-1 text-xs font-semibold text-[#0A2239] hover:border-[#0A2239]"
+                >
+                  <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>{isVi ? 'In / PDF' : 'Print / PDF'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => downloadItineraryIcs(items, lang)}
+                  className="inline-flex min-h-[34px] items-center gap-1.5 rounded-md border border-[#D4DBE5] bg-white px-2.5 py-1 text-xs font-semibold text-[#0A2239] hover:border-[#0A2239]"
+                >
+                  <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>{isVi ? 'Lịch .ics' : '.ics Calendar'}</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClearAll}
+                className="min-h-[34px] px-2 text-xs font-semibold text-[#526071] transition-colors hover:text-[#C8102E]"
+              >
+                {t.clearAll}
+              </button>
+            </div>
           </div>
         )}
       </div>

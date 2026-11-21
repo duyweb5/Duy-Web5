@@ -7,6 +7,7 @@ import {
   SiteConfigData,
   submitGuideLead,
 } from '../lib/cmsService';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface FooterProps {
   lang: Language;
@@ -145,14 +146,17 @@ export function Footer({
 
         <div className="mt-12 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/60 sm:flex-row sm:items-center">
           <p>{t.copyright}</p>
-          <button
-            type="button"
-            onClick={onOpenAdminCms}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/75 transition-colors hover:text-white whitespace-nowrap shrink-0"
-          >
-            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{lang === 'vi' ? 'Quản trị CMS' : 'CMS Admin'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-4">
+            <PWAInstallButton lang={lang} variant="footer" />
+            <button
+              type="button"
+              onClick={onOpenAdminCms}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/75 transition-colors hover:text-white whitespace-nowrap shrink-0"
+            >
+              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{lang === 'vi' ? 'Quản trị CMS' : 'CMS Admin'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </footer>

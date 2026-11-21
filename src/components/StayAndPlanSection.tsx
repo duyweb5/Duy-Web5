@@ -3,6 +3,7 @@ import { ArrowRight, Bookmark, Check, CheckCircle2 } from 'lucide-react';
 import { HotelItem, Language } from '../data/bostonData';
 import { useSiteCopy } from '../lib/I18nContext';
 import { EMAIL_REGEX, submitGuideLead } from '../lib/cmsService';
+import { BostonWeatherWidget } from './BostonWeatherWidget';
 import { ResilientImage } from './ResilientImage';
 
 interface StayAndPlanSectionProps {
@@ -75,6 +76,9 @@ export function StayAndPlanSection({
   return (
     <section id="stay" className="bg-white py-20 lg:py-24">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-8">
+        {/* Live Boston Weather & Packing Guidance */}
+        <BostonWeatherWidget lang={lang} />
+
         {/* Hotels Header + Filter */}
         <div className="flex flex-col justify-between gap-6 border-b border-[#E3E7EE] pb-8 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
